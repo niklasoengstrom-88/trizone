@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0C1320">
+<title>Mot Holmsjö — träningsöversikt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0C1320; --surface:#131B2A; --surface2:#0F1726; --line:#1E2A3D;
+  --ink:#E9EEF5; --mut:#8B98AB; --faint:#5C687C;
+  --swim:#56B4D3; --bike:#E3B341; --run:#E2654F; --strength:#9A8FD0; --ok:#5FB87A;
+  --warn:#E3B341; --risk:#E2654F;
+  --disp:"Barlow Condensed", "Arial Narrow", sans-serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r:14px;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html{color-scheme:dark}
+body{background:var(--bg); color:var(--ink); font-family:var(--body); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased; padding-bottom:72px}
+a{color:var(--swim)}
+button{font-family:var(--body); cursor:pointer}
+main{max-width:1060px; margin:0 auto; padding:0 16px}
+::selection{background:#2A3B57}
+
+/* ---------- Header / hero ---------- */
+header.hero{max-width:1060px; margin:0 auto; padding:22px 16px 6px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px}
+.eyebrow{font-family:var(--disp); font-weight:600; letter-spacing:.18em; text-transform:uppercase; font-size:13px; color:var(--mut)}
+.hero h1{font-family:var(--disp); font-weight:700; font-size:34px; line-height:1.05; letter-spacing:.01em}
+.countdown{display:flex; align-items:baseline; gap:8px; margin-top:2px}
+.countdown .n{font-family:var(--disp); font-weight:700; font-size:64px; line-height:.95; letter-spacing:.01em;
+  font-variant-numeric:tabular-nums}
+.countdown .u{color:var(--mut); font-size:14px}
+.racedate{color:var(--faint); font-size:13px; margin-top:2px}
+.iconbtn{background:var(--surface); border:1px solid var(--line); color:var(--mut); border-radius:10px;
+  width:40px; height:40px; font-size:18px; flex:0 0 auto}
+.iconbtn:hover{color:var(--ink); border-color:#2C3D58}
+
+/* ---------- Timeline (signatur) ---------- */
+.timeline{position:relative; margin:14px 0 6px}
+.tl-band{display:flex; height:42px; border-radius:10px; overflow:hidden; border:1px solid var(--line)}
+.tl-seg{position:relative; display:flex; align-items:center; justify-content:center; background:var(--surface2);
+  border-right:1px solid var(--line); min-width:0; cursor:pointer; transition:background .15s}
+.tl-seg:last-child{border-right:0}
+.tl-seg span{font-family:var(--disp); font-weight:600; font-size:14px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--mut); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 6px}
+.tl-seg.past{background:#16202F}
+.tl-seg.past span{color:var(--faint)}
+.tl-seg.current{background:linear-gradient(180deg,#1B2A40,#16233A); box-shadow:inset 0 0 0 1px #31507A}
+.tl-seg.current span{color:var(--ink)}
+.tl-seg:hover{background:#1B2740}
+.tl-seg.sel{outline:2px solid #3D6396; outline-offset:-2px}
+.tl-race{position:absolute; right:-1px; top:-9px; font-size:17px; line-height:1}
+.tl-today{position:absolute; top:-6px; bottom:-6px; width:2px; background:var(--ink); border-radius:2px}
+.tl-today::after{content:""; position:absolute; top:-7px; left:50%; transform:translateX(-50%);
+  width:10px; height:10px; border-radius:50%; background:var(--ink); box-shadow:0 0 0 0 rgba(233,238,245,.5);
+  animation:pulse 2.4s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(233,238,245,.45)} 70%{box-shadow:0 0 0 9px rgba(233,238,245,0)} 100%{box-shadow:0 0 0 0 rgba(233,238,245,0)}}
+@media (prefers-reduced-motion: reduce){ .tl-today::after{animation:none} }
+.tl-detail{margin-top:10px; padding:12px 14px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  font-size:14px; color:var(--mut); display:none}
+.tl-detail.show{display:block}
+.tl-detail b{color:var(--ink); font-family:var(--disp); font-size:16px; letter-spacing:.04em; text-transform:uppercase; font-weight:600}
+.tl-detail .meta{margin-top:2px}
+
+/* ---------- Sektioner & kort ---------- */
+section{margin:26px 0}
+h2{font-family:var(--disp); font-weight:600; font-size:18px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--mut); margin-bottom:10px; display:flex; align-items:baseline; gap:10px}
+h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transform:none; color:var(--faint)}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px}
+.grid2{display:grid; gap:14px}
+@media(min-width:880px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid; gap:14px}
+@media(min-width:880px){ .grid3{grid-template-columns:1fr 1fr 1fr} }
+.cardtitle{font-weight:600; font-size:14px; margin-bottom:2px}
+.cardsub{font-size:12.5px; color:var(--faint); margin-bottom:10px}
+
+/* ---------- Flaggor ---------- */
+#flags{display:flex; flex-direction:column; gap:8px; margin-top:14px}
+.flag{display:flex; gap:10px; align-items:flex-start; padding:11px 13px; border-radius:12px;
+  background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--mut); font-size:14px}
+.flag.risk{border-left-color:var(--risk)}
+.flag.warn{border-left-color:var(--warn)}
+.flag.ok{border-left-color:var(--ok); color:var(--mut)}
+.flag b{display:block; font-size:13.5px}
+.flag .d{color:var(--mut); font-size:13px}
+
+/* ---------- Delmål ---------- */
+.msgroup{margin-bottom:14px}
+.msgroup h3{font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin:0 2px 6px}
+.ms{display:flex; align-items:center; gap:10px; padding:11px 13px; background:var(--surface);
+  border:1px solid var(--line); border-radius:12px; margin-bottom:6px; cursor:pointer}
+.ms .dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto}
+.ms .txt{flex:1; min-width:0}
+.ms .txt b{font-weight:500; font-size:14px; display:block}
+.ms .txt .dates{font-size:12px; color:var(--faint)}
+.pill{font-family:var(--disp); font-weight:600; font-size:12.5px; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 9px; border-radius:99px; border:1px solid var(--line); color:var(--mut); flex:0 0 auto}
+.pill.done{color:var(--ok); border-color:#2E5240}
+.pill.active{color:var(--swim); border-color:#2C4A5C}
+.pill.risk{color:var(--risk); border-color:#5C322C}
+.pill.pushed{color:var(--warn); border-color:#5C4D2C}
+.ms .note{display:none; width:100%; font-size:13px; color:var(--mut); padding-top:6px}
+.ms.open{flex-wrap:wrap}
+.ms.open .note{display:block}
+
+/* ---------- Diagram ---------- */
+svg{display:block; width:100%; height:auto}
+.legend{display:flex; flex-wrap:wrap; gap:12px; margin-top:8px; font-size:12px; color:var(--mut)}
+.legend i{display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:5px; vertical-align:0}
+.kpi{font-family:var(--disp); font-weight:700; font-size:30px; line-height:1}
+.kpi small{font-family:var(--body); font-weight:400; font-size:13px; color:var(--mut)}
+.splitbar{height:14px; border-radius:99px; overflow:hidden; display:flex; border:1px solid var(--line); position:relative; margin:10px 0 4px}
+.splitbar .lo{background:#2E5E7A}
+.splitbar .hi{background:#7A3B30}
+.splitbar .tgt{position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--ink)}
+
+/* ---------- Tomt läge / fel ---------- */
+.empty{color:var(--faint); font-size:13.5px; padding:8px 2px}
+#banner{display:none; margin-top:14px; padding:11px 13px; border-radius:12px; border:1px solid #5C322C;
+  background:#231518; color:#E8B0A6; font-size:13.5px}
+#banner.show{display:block}
+
+/* ---------- Footer ---------- */
+footer{position:fixed; left:0; right:0; bottom:0; background:rgba(12,19,32,.92); backdrop-filter:blur(8px);
+  border-top:1px solid var(--line)}
+.footinner{max-width:1060px; margin:0 auto; padding:10px 16px; display:flex; align-items:center; gap:12px}
+#lastupd{font-size:12px; color:var(--faint); flex:1}
+.btn{background:var(--surface); border:1px solid var(--line); color:var(--ink); border-radius:10px;
+  padding:8px 14px; font-size:13.5px}
+.btn:hover{border-color:#2C3D58}
+.btn.primary{background:#1C3550; border-color:#2C4F77}
+button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid #5E93CC; outline-offset:2px}
+
+/* ---------- Inställningar / onboarding ---------- */
+#settings{display:none; position:fixed; inset:0; background:rgba(7,11,19,.78); z-index:50; overflow-y:auto}
+#settings.show{display:block}
+.panel{max-width:680px; margin:5vh auto; background:var(--surface); border:1px solid var(--line);
+  border-radius:16px; padding:22px}
+.panel h2{margin-bottom:14px}
+.panel label{display:block; font-size:13px; color:var(--mut); margin:12px 0 4px}
+.panel input{width:100%; background:var(--surface2); border:1px solid var(--line); color:var(--ink);
+  border-radius:10px; padding:9px 11px; font-size:14px; font-family:var(--body)}
+.panel input:focus{outline:none; border-color:#3D6396}
+.panel .row{display:flex; gap:10px; margin-top:18px}
+.help{margin-top:18px; padding-top:14px; border-top:1px solid var(--line); font-size:13px; color:var(--mut)}
+.help h3{font-size:13px; color:var(--ink); margin:12px 0 4px}
+.help code{background:var(--surface2); border:1px solid var(--line); border-radius:6px; padding:1px 6px;
+  font-size:12px; color:#A8C7E0}
+.help ol{padding-left:18px} .help li{margin:4px 0}
+#onboard{margin-top:18px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div>
+    <div class="eyebrow" id="eyebrow">Triathlon · Olympisk distans</div>
+    <h1 id="racename">Mot Holmsjö</h1>
+    <div class="countdown"><span class="n" id="cd-n">–</span><span class="u" id="cd-u">dagar kvar</span></div>
+    <div class="racedate" id="cd-date"></div>
+  </div>
+  <button class="iconbtn" id="btn-settings" title="Inställningar" aria-label="Inställningar">⚙</button>
+</header>
+
+<main>
+  <div id="banner" role="alert"></div>
+
+  <section id="sec-oversikt">
+    <div class="timeline">
+      <div class="tl-band" id="tl-band" role="list" aria-label="Periodisering"></div>
+      <div class="tl-detail" id="tl-detail"></div>
+    </div>
+    <div id="flags" aria-live="polite"></div>
+  </section>
+
+  <div id="onboard"></div>
+
+  <section id="sec-delmal" hidden>
+    <h2>Delmål <small>plan vs utfall per gren</small></h2>
+    <div id="ms-list"></div>
+  </section>
+
+  <section id="sec-belastning" hidden>
+    <h2>Belastning <small>senaste 12 veckorna</small></h2>
+    <div class="grid2">
+      <div class="card">
+        <div class="cardtitle">Veckovolym per gren</div>
+        <div class="cardsub">Timmar per vecka · skuggade fält = återhämtningsvecka enligt plan</div>
+        <div id="ch-volume"></div>
+        <div class="legend" id="lg-volume"></div>
+      </div>
+      <div class="card">
+        <div class="cardtitle">Löpvolym & 110 %-tak</div>
+        <div class="cardsub">Km per vecka · linjen = 110 % av 3-veckors rullande snitt</div>
+        <div id="ch-run"></div>
+        <div class="legend"><span><i style="background:#3D5E80"></i>Inom tak</span><span><i style="background:var(--warn)"></i>Nära tak (&gt;90 %)</span><span><i style="background:var(--run)"></i>Över tak</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="sec-intensitet" hidden>
+    <h2>Intensitet <small>rullande 14 dagar, tid i pulszoner</small></h2>
+    <div class="card" id="ch-intensity"></div>
+  </section>
+
+  <section id="sec-effektivitet" hidden>
+    <h2>Aerob effektivitet <small>samma puls, bättre output = progression</small></h2>
+    <div class="grid3">
+      <div class="card">
+        <div class="cardtitle" style="color:var(--bike)">Cykel</div>
+        <div class="cardsub">Snittwatt på pass med snittpuls 130–145 · ● = inomhus/wattkälla, ○ = utomhus</div>
+        <div id="ch-bike"></div>
+      </div>
+      <div class="card">
+        <div class="cardtitle" style="color:var(--run)">Löpning</div>
+        <div class="cardsub">Tempo på Z2-pass (puls 124–150, ≥30 min) · uppåt i grafen = snabbare</div>
+        <div id="ch-runeff"></div>
+      </div>
+      <div class="card">
+        <div class="cardtitle" style="color:var(--swim)">Simning</div>
+        <div class="cardsub">Tempo /100 m per simpass · staplar = längsta kontinuerliga distans (från delmål)</div>
+        <div id="ch-swim"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="footinner">
+    <span id="lastupd">Ingen data hämtad ännu</span>
+    <button class="btn" id="btn-refresh">Uppdatera</button>
+  </div>
+</footer>
+
+<div id="settings">
+  <div class="panel">
+    <h2>Inställningar</h2>
+    <label for="in-key">intervals.icu API-nyckel</label>
+    <input id="in-key" type="password" autocomplete="off" placeholder="t.ex. 1a2b3c…">
+    <label for="in-id">intervals.icu Athlete ID</label>
+    <input id="in-id" type="text" placeholder="t.ex. i123456">
+    <label for="in-plan">Google Sheet — CSV-länk för fliken Plan</label>
+    <input id="in-plan" type="url" placeholder="https://docs.google.com/…&output=csv">
+    <label for="in-ms">Google Sheet — CSV-länk för fliken Delmal</label>
+    <input id="in-ms" type="url" placeholder="https://docs.google.com/…&output=csv">
+    <label for="in-proxy">Proxy-prefix (lämna tomt — används bara om direktanrop blockeras)</label>
+    <input id="in-proxy" type="url" placeholder="https://din-worker.workers.dev/?url=">
+    <div class="row">
+      <button class="btn primary" id="btn-save">Spara & hämta data</button>
+      <button class="btn" id="btn-close">Stäng</button>
+    </div>
+    <div class="help">
+      <h3>1 · intervals.icu</h3>
+      <ol>
+        <li>Settings → Developer → kopiera <b>API key</b>.</li>
+        <li>Athlete ID är <code>i</code>-numret i din profil-URL.</li>
+        <li>Sätt zoner under Settings: max-HR, LTHR och FTP — annars blir zonberäkningen fel.</li>
+      </ol>
+      <h3>2 · Google Sheet (två flikar)</h3>
+      <p>Flik <b>Plan</b>, exakt dessa kolumnrubriker:</p>
+      <p><code>typ</code> <code>namn</code> <code>start</code> <code>slut</code> <code>mal_lag</code> <code>anteckning</code></p>
+      <p>typ = <code>fas</code>, <code>race</code> eller <code>vila</code> (återhämtningsvecka). Datum som ÅÅÅÅ-MM-DD. mal_lag = mål-% lågintensivt (t.ex. 75).</p>
+      <p style="margin-top:8px">Flik <b>Delmal</b>:</p>
+      <p><code>gren</code> <code>beskrivning</code> <code>plandatum</code> <code>faktiskt</code> <code>status</code> <code>varde</code> <code>anteckning</code></p>
+      <p>gren = sim/cykel/löp/brick/styrka · status = klart/pågår/skjutet/risk (tomt = planerat) · varde = valfri siffra, t.ex. längsta kontinuerliga simdistans i meter.</p>
+      <h3>3 · Publicera flikarna som CSV</h3>
+      <ol>
+        <li>I Sheet: Arkiv → Dela → <b>Publicera på webben</b>.</li>
+        <li>Välj fliken Plan, format <b>CSV</b>, publicera, kopiera länken hit.</li>
+        <li>Upprepa för fliken Delmal.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============ Konstanter & state ============ */
+const CFG_KEY="holmsjo.cfg.v1", CACHE_KEY="holmsjo.cache.v1";
+const DAY=86400000;
+const FALLBACK_RACE={name:"Holmsjö Triathlon", date:"2026-07-25"};
+const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
+const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
+let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[]};
+
+/* ============ Hjälpare ============ */
+const $=(s)=>document.querySelector(s);
+const esc=(s)=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function pd(s){ if(!s) return null; const m=String(s).trim().match(/^(\d{4})-(\d{2})-(\d{2})/); return m? new Date(+m[1],+m[2]-1,+m[3]) : null; }
+function iso(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function today(){ const n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate()); }
+function addDays(d,n){ return new Date(d.getTime()+n*DAY); }
+function monday(d){ const x=new Date(d); const wd=(x.getDay()+6)%7; return addDays(new Date(x.getFullYear(),x.getMonth(),x.getDate()), -wd); }
+function dfmt(d){ return d? d.toLocaleDateString("sv-SE",{day:"numeric",month:"short"}) : "–"; }
+function weekNo(d){ const t=new Date(d); t.setDate(t.getDate()+3-((t.getDay()+6)%7)); const w1=new Date(t.getFullYear(),0,4); return 1+Math.round(((t-w1)/DAY-3+((w1.getDay()+6)%7))/7); }
+function paceFmt(sec){ if(!isFinite(sec)||sec<=0) return "–"; const m=Math.floor(sec/60), s=Math.round(sec%60); return m+":"+String(s).padStart(2,"0"); }
+function n1(x){ return x.toLocaleString("sv-SE",{maximumFractionDigits:1}); }
+function linreg(pts){ const n=pts.length; if(n<2) return null;
+  let sx=0,sy=0,sxy=0,sxx=0; for(const p of pts){sx+=p.x;sy+=p.y;sxy+=p.x*p.y;sxx+=p.x*p.x;}
+  const den=n*sxx-sx*sx; if(!den) return null;
+  const a=(n*sxy-sx*sy)/den, b=(sy-a*sx)/n; return {a,b}; }
+
+function parseCSV(text){
+  const rows=[]; let row=[], cur="", q=false;
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(cur); cur=""; }
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n') i++; row.push(cur); cur=""; if(row.some(v=>v.trim()!=="")) rows.push(row); row=[]; }
+    else cur+=c; }
+  if(cur!==""||row.length){ row.push(cur); if(row.some(v=>v.trim()!=="")) rows.push(row); }
+  if(!rows.length) return [];
+  const norm=(h)=>h.toLowerCase().replace(/[åä]/g,"a").replace(/ö/g,"o").replace(/[^a-z0-9]/g,"");
+  const heads=rows[0].map(norm);
+  return rows.slice(1).map(r=>{ const o={}; heads.forEach((h,i)=>o[h]=(r[i]??"").trim()); return o; });
+}
+
+function normStatus(s){ s=(s||"").toLowerCase();
+  if(/^klar/.test(s)) return "done";
+  if(/^p[åa]g/.test(s)) return "active";
+  if(/^skjut/.test(s)) return "pushed";
+  if(/^risk/.test(s)) return "risk";
+  return "planned"; }
+function normGren(g){ g=(g||"").toLowerCase();
+  if(g.startsWith("sim")) return "swim";
+  if(g.startsWith("cyk")) return "bike";
+  if(/^l[öo]p/.test(g)) return "run";
+  if(g.startsWith("brick")) return "brick";
+  if(g.startsWith("styr")) return "strength";
+  return "other"; }
+function sportOf(a){ const t=(a.type||"").toLowerCase();
+  if(t.includes("swim")) return "swim";
+  if(t.includes("ride")||t.includes("bik")) return "bike";
+  if(t.includes("run")) return "run";
+  if(t.includes("weight")||t.includes("strength")) return "strength";
+  return "other"; }
+const actHR=(a)=>a.average_heartrate ?? a.icu_average_hr ?? null;
+const actW =(a)=>a.icu_average_watts ?? a.average_watts ?? null;
+const actDate=(a)=>pd(a.start_date_local || a.start_date);
+function zones(a){ const z=a.icu_hr_zone_times; return Array.isArray(z)? z : null; }
+
+/* ============ Hämtning ============ */
+async function fetchMaybeProxy(url, opts){
+  try{ const r=await fetch(url, opts); if(!r.ok) throw new Error("HTTP "+r.status+" "+url.split("/").slice(2,3)); return r; }
+  catch(e){
+    if(cfg.proxy && !url.startsWith(cfg.proxy)){
+      const r=await fetch(cfg.proxy + encodeURIComponent(url), opts);
+      if(!r.ok) throw new Error("HTTP "+r.status+" (via proxy)");
+      return r; }
+    throw e; } }
+
+async function fetchIntervals(path){
+  const url="https://intervals.icu/api/v1/athlete/"+encodeURIComponent(cfg.athleteId)+path;
+  const r=await fetchMaybeProxy(url,{headers:{Authorization:"Basic "+btoa("API_KEY:"+cfg.apiKey)}});
+  return r.json(); }
+
+async function refreshAll(){
+  if(!cfg) return;
+  $("#btn-refresh").disabled=true; $("#btn-refresh").textContent="Hämtar…";
+  const t=today();
+  const tasks={
+    activities: fetchIntervals("/activities?oldest="+iso(addDays(t,-120))+"&newest="+iso(addDays(t,1))),
+    wellness:   fetchIntervals("/wellness?oldest="+iso(addDays(t,-45))+"&newest="+iso(t)),
+    plan:       cfg.planUrl? fetchMaybeProxy(cfg.planUrl).then(r=>r.text()).then(parseCSV) : Promise.resolve([]),
+    milestones: cfg.msUrl?   fetchMaybeProxy(cfg.msUrl).then(r=>r.text()).then(parseCSV)   : Promise.resolve([])
+  };
+  const keys=Object.keys(tasks);
+  const res=await Promise.allSettled(Object.values(tasks));
+  const fails=[];
+  res.forEach((r,i)=>{ if(r.status==="fulfilled") data[keys[i]]=r.value;
+    else fails.push(keys[i]+": "+(r.reason&&r.reason.message||r.reason)); });
+  if(fails.length){
+    const corsHint=fails.some(f=>/Failed to fetch|NetworkError|TypeError/i.test(f));
+    showBanner("Kunde inte hämta: "+fails.join(" · ")+
+      (corsHint? " — Troligen CORS-blockering. Lägg in ett proxy-prefix under Inställningar (instruktion i README)." : ""));
+  } else hideBanner();
+  localStorage.setItem(CACHE_KEY, JSON.stringify({ts:Date.now(), data}));
+  $("#btn-refresh").disabled=false; $("#btn-refresh").textContent="Uppdatera";
+  renderAll(Date.now());
+}
+function showBanner(msg){ const b=$("#banner"); b.textContent=msg; b.classList.add("show"); }
+function hideBanner(){ $("#banner").classList.remove("show"); }
+
+/* ============ Beräkningar ============ */
+function getPlan(){
+  const phases=[], rests=[]; let race=null;
+  for(const r of data.plan){
+    const typ=(r.typ||"").toLowerCase();
+    const row={name:r.namn||"", start:pd(r.start), end:pd(r.slut), target:parseFloat((r.mallag||"").replace(",","."))||null, note:r.anteckning||""};
+    if(typ==="race"&&row.start){ race={name:row.name||FALLBACK_RACE.name, date:row.start, note:row.note}; }
+    else if(typ==="vila"&&row.start){ rests.push(row); }
+    else if(row.start&&row.end){ phases.push(row); } }
+  phases.sort((a,b)=>a.start-b.start);
+  if(!race) race={name:FALLBACK_RACE.name, date:pd(FALLBACK_RACE.date), note:""};
+  return {phases, rests, race}; }
+
+function currentPhase(plan){ const t=today();
+  return plan.phases.find(p=>t>=p.start&&t<=p.end) || null; }
+
+function weeklyAgg(nWeeks){
+  const t=today(), w0=monday(t), weeks=[];
+  for(let i=nWeeks-1;i>=0;i--){ weeks.push({start:addDays(w0,-7*i), vol:{swim:0,bike:0,run:0,strength:0,other:0}, runKm:0}); }
+  const idx=new Map(weeks.map((w,i)=>[iso(w.start),i]));
+  for(const a of data.activities){ const d=actDate(a); if(!d) continue;
+    const k=iso(monday(d)); if(!idx.has(k)) continue;
+    const w=weeks[idx.get(k)], s=sportOf(a);
+    w.vol[s]+=(a.moving_time||0)/3600;
+    if(s==="run") w.runKm+=(a.distance||0)/1000; }
+  weeks.forEach((w,i)=>{ const prev=weeks.slice(Math.max(0,i-3),i).map(x=>x.runKm);
+    w.cap = prev.length===3 ? 1.1*(prev[0]+prev[1]+prev[2])/3 : null; });
+  return weeks; }
+
+function intensity14(){
+  const cut=addDays(today(),-14); let lo=0, hi=0;
+  for(const a of data.activities){ const d=actDate(a); if(!d||d<cut) continue;
+    const z=zones(a); if(!z||!z.length) continue;
+    lo+=(z[0]||0)+(z[1]||0); for(let i=2;i<z.length;i++) hi+=z[i]||0; }
+  const tot=lo+hi; return tot? {lo,hi,tot,loPct:100*lo/tot} : null; }
+
+function getMilestones(){
+  return data.milestones.map(r=>({
+    gren:normGren(r.gren), desc:r.beskrivning||"", plan:pd(r.plandatum), done:pd(r.faktiskt),
+    status:normStatus(r.status), varde:parseFloat((r.varde||"").replace(",","."))||null, note:r.anteckning||""
+  })).filter(m=>m.desc); }
+
+function computeFlags(weeks, plan, inten, ms){
+  const flags=[], t=today();
+  const cw=weeks[weeks.length-1];
+  if(cw && cw.cap!=null && cw.runKm > cw.cap)
+    flags.push({lv:"risk", t:"Löpvolym över 110 %-taket",
+      d:n1(cw.runKm)+" km denna vecka — taket är "+n1(cw.cap)+" km (110 % av 3-veckorssnittet). Stryk eller korta nästa löppass."});
+  const lastSwim=data.activities.filter(a=>sportOf(a)==="swim").map(actDate).sort((a,b)=>b-a)[0];
+  if(data.activities.length){
+    const gap=lastSwim? Math.floor((t-lastSwim)/DAY) : 99;
+    if(gap>7) flags.push({lv:"risk", t:"Simning tappad",
+      d:(lastSwim? gap+" dagar sedan senaste simpass." : "Inget simpass i datan.")+" Simning får aldrig tappas — boka in ett pass."}); }
+  for(const m of ms){ if(m.status!=="done"&&m.plan&&m.plan<=addDays(t,7)&&!m.done){
+    flags.push({lv:"warn", t:"Delmål i riskzonen", d:"”"+m.desc+"” har plandatum "+dfmt(m.plan)+" och är inte klart."}); break; } }
+  const ph=currentPhase(plan);
+  if(inten && ph && ph.target!=null && Math.abs(inten.loPct-ph.target)>10){
+    const dir=inten.loPct<ph.target? "för mycket hårt arbete":"mer lågintensivt än planerat";
+    flags.push({lv:"warn", t:"Intensitetsfördelning avviker",
+      d:Math.round(inten.loPct)+" % lågintensivt senaste 14 dagarna — fasens mål är ~"+ph.target+" % ("+dir+")."}); }
+  const hard5=data.activities.filter(a=>{ const d=actDate(a); if(!d||d<addDays(t,-5)) return false;
+    const z=zones(a); if(!z) return false; let s=0; for(let i=3;i<z.length;i++) s+=z[i]||0; return s>=1200; });
+  if(hard5.length>=3) flags.push({lv:"warn", t:"Hög hård-frekvens",
+    d:hard5.length+" pass med ≥20 min i Z4+ de senaste 5 dagarna. Planera in lätta dagar."});
+  const rhr=data.wellness.map(w=>({d:pd(w.id), v:w.restingHR??w.resting_hr})).filter(x=>x.d&&x.v>0).sort((a,b)=>a.d-b.d);
+  if(rhr.length>=20){
+    const last7=rhr.filter(x=>x.d>=addDays(t,-7));
+    const base=rhr.filter(x=>x.d<addDays(t,-7)&&x.d>=addDays(t,-37));
+    if(last7.length>=4&&base.length>=14){
+      const m7=last7.reduce((s,x)=>s+x.v,0)/last7.length, mb=base.reduce((s,x)=>s+x.v,0)/base.length;
+      if(m7-mb>5) flags.push({lv:"warn", t:"Återhämtning: kolla läget",
+        d:"Vilopulsen ligger "+n1(m7-mb)+" slag över 30-dagarsbaslinjen ("+Math.round(m7)+" vs "+Math.round(mb)+"). Sov, ät, sänk intensiteten tills den vänder."}); } }
+  return flags; }
+
+/* ============ SVG-hjälpare ============ */
+function svgOpen(w,h){ return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet" role="img">'; }
+function txt(x,y,s,fill,size,anchor,bold){ return '<text x="'+x+'" y="'+y+'" fill="'+(fill||"#8B98AB")+'" font-size="'+(size||10)+'" text-anchor="'+(anchor||"start")+'"'+(bold?' font-weight="600"':'')+' font-family="IBM Plex Sans, sans-serif">'+esc(s)+'</text>'; }
+
+/* ============ Rendering ============ */
+function renderHeader(plan){
+  const t=today(), r=plan.race;
+  $("#racename").textContent="Mot "+(r.name.replace(/ ?triathlon/i,"")||"racet");
+  const days=Math.ceil((r.date-t)/DAY);
+  $("#cd-n").textContent = days>=0? days : "✓";
+  $("#cd-u").textContent = days>1? "dagar kvar" : days===1? "dag kvar" : days===0? "RACE-DAG" : "genomfört";
+  $("#cd-date").textContent = r.name+" · "+r.date.toLocaleDateString("sv-SE",{day:"numeric",month:"long",year:"numeric"})+" · vecka "+weekNo(r.date);
+}
+
+function renderTimeline(plan){
+  const band=$("#tl-band"), det=$("#tl-detail");
+  if(!plan.phases.length){ band.innerHTML='<div class="tl-seg" style="flex:1"><span>Lägg in faser i fliken Plan</span></div>'; return; }
+  const t=today(), t0=plan.phases[0].start, t1=plan.race.date>plan.phases[plan.phases.length-1].end? plan.race.date : plan.phases[plan.phases.length-1].end;
+  const span=t1-t0;
+  band.innerHTML="";
+  plan.phases.forEach((p,i)=>{
+    const w=100*(Math.min(p.end,t1)-p.start+DAY)/span;
+    const seg=document.createElement("div");
+    seg.className="tl-seg"+(t>p.end?" past":"")+(t>=p.start&&t<=p.end?" current":"");
+    seg.style.flexBasis=w+"%"; seg.style.flexGrow="0";
+    seg.setAttribute("role","listitem"); seg.tabIndex=0;
+    seg.innerHTML="<span>"+esc(p.name)+"</span>";
+    const show=()=>{ document.querySelectorAll(".tl-seg.sel").forEach(e=>e.classList.remove("sel")); seg.classList.add("sel");
+      det.innerHTML="<b>"+esc(p.name)+"</b><div class='meta'>"+dfmt(p.start)+" – "+dfmt(p.end)+" (v"+weekNo(p.start)+"–v"+weekNo(p.end)+")"+
+        (p.target!=null? " · mål ~"+p.target+" % lågintensivt":"")+"</div>"+
+        (p.note? "<div style='margin-top:4px'>"+esc(p.note)+"</div>":"");
+      det.classList.add("show"); };
+    seg.addEventListener("click",show);
+    seg.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();show();} });
+    band.appendChild(seg); });
+  const todayPct=100*Math.min(Math.max(t-t0,0),span)/span;
+  const mark=document.createElement("div"); mark.className="tl-today"; mark.style.left="calc("+todayPct+"% - 1px)";
+  mark.title="Idag"; band.parentElement.appendChild(mark);
+  const flag=document.createElement("div"); flag.className="tl-race"; flag.textContent="🏁"; flag.title=plan.race.name;
+  band.appendChild(flag);
+}
+
+function renderFlags(flags){
+  const c=$("#flags");
+  if(!flags.length){ c.innerHTML='<div class="flag ok"><div><b style="color:var(--ok)">Allt enligt plan</b><span class="d">Inga avvikelser att reagera på just nu.</span></div></div>'; return; }
+  c.innerHTML=flags.map(f=>'<div class="flag '+f.lv+'"><div><b>'+esc(f.t)+'</b><span class="d">'+esc(f.d)+'</span></div></div>').join("");
+}
+
+function renderMilestones(ms){
+  const c=$("#ms-list");
+  if(!ms.length){ c.innerHTML='<div class="empty">Inga delmål ännu — lägg rader i fliken Delmal i ditt Sheet.</div>'; return; }
+  const t=today(), soon=addDays(t,14);
+  const open=ms.filter(m=>m.status!=="done");
+  const g1=open.filter(m=>m.plan&&m.plan<=soon).sort((a,b)=>a.plan-b.plan);
+  const g2=open.filter(m=>!(m.plan&&m.plan<=soon)).sort((a,b)=>(a.plan||9e15)-(b.plan||9e15));
+  const g3=ms.filter(m=>m.status==="done").sort((a,b)=>(b.done||b.plan||0)-(a.done||a.plan||0));
+  const pill=(m)=>{ const map={done:["Klart","done"],active:["Pågår","active"],pushed:["Skjutet","pushed"],risk:["Risk","risk"],planned:["Planerat",""]};
+    let [l,cls]=map[m.status]||map.planned;
+    if(m.status!=="done"&&m.plan&&m.plan<=addDays(t,7)){ l= m.plan<t? "Försenat":"Snart"; cls = m.plan<t? "risk":"active"; }
+    return '<span class="pill '+cls+'">'+l+'</span>'; };
+  const row=(m)=>'<div class="ms" tabindex="0"><span class="dot" style="background:'+(COLORS[m.gren]||COLORS.other)+'"></span>'+
+    '<span class="txt"><b>'+esc(m.desc)+'</b><span class="dates">'+(SPORT_LABEL[m.gren]||"")+' · plan '+dfmt(m.plan)+(m.done? " → klart "+dfmt(m.done):"")+(m.varde?" · "+n1(m.varde):"")+'</span></span>'+
+    pill(m)+(m.note? '<span class="note">'+esc(m.note)+'</span>':'')+'</div>';
+  const grp=(title,arr)=>arr.length? '<div class="msgroup"><h3>'+title+'</h3>'+arr.map(row).join("")+'</div>' : "";
+  c.innerHTML=grp("Nu — inom 14 dagar",g1)+grp("Senare",g2)+grp("Avklarade",g3);
+  c.querySelectorAll(".ms").forEach(el=>{ const tg=()=>el.classList.toggle("open");
+    el.addEventListener("click",tg);
+    el.addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();tg();} }); });
+}
+
+function renderVolume(weeks, plan){
+  const W=460,H=190,pad={l:30,r:6,t:10,b:24}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  const max=Math.max(1,...weeks.map(w=>Object.values(w.vol).reduce((a,b)=>a+b,0)));
+  const bw=iw/weeks.length;
+  let s=svgOpen(W,H);
+  weeks.forEach((w,i)=>{ const isRest=plan.rests.some(r=>w.start>=monday(r.start)&&w.start<=r.end);
+    if(isRest) s+='<rect x="'+(pad.l+i*bw)+'" y="'+pad.t+'" width="'+bw+'" height="'+ih+'" fill="#FFFFFF" opacity="0.045"/>'; });
+  for(const gy of [0.5,1]){ const y=pad.t+ih-ih*gy;
+    s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+y+'" y2="'+y+'" stroke="#1E2A3D" stroke-width="1"/>';
+    s+=txt(pad.l-4, y+3, n1(max*gy)+"h", "#5C687C", 9, "end"); }
+  const order=["swim","bike","run","strength","other"];
+  weeks.forEach((w,i)=>{ let y=pad.t+ih; const x=pad.l+i*bw+bw*0.18, wpx=bw*0.64;
+    for(const k of order){ const v=w.vol[k]; if(v<=0) continue;
+      const h=ih*v/max; y-=h;
+      s+='<rect x="'+x+'" y="'+y+'" width="'+wpx+'" height="'+h+'" fill="'+COLORS[k]+'" rx="1.5"/>'; }
+    if(i%2===(weeks.length-1)%2) s+=txt(pad.l+i*bw+bw/2, H-8, "v"+weekNo(w.start), "#5C687C", 9, "middle"); });
+  s+="</svg>";
+  $("#ch-volume").innerHTML=s;
+  $("#lg-volume").innerHTML=["swim","bike","run","strength"].map(k=>'<span><i style="background:'+COLORS[k]+'"></i>'+SPORT_LABEL[k]+'</span>').join("");
+}
+
+function renderRun(weeks){
+  const W=460,H=190,pad={l:34,r:6,t:12,b:24}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  const max=Math.max(5,...weeks.map(w=>Math.max(w.runKm,w.cap||0)))*1.1;
+  const bw=iw/weeks.length, y=(v)=>pad.t+ih-ih*v/max;
+  let s=svgOpen(W,H);
+  for(const gv of [Math.round(max/2), Math.round(max)]){
+    s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+y(gv)+'" y2="'+y(gv)+'" stroke="#1E2A3D"/>';
+    s+=txt(pad.l-4,y(gv)+3,gv+" km","#5C687C",9,"end"); }
+  weeks.forEach((w,i)=>{ const x=pad.l+i*bw+bw*0.2, wpx=bw*0.6;
+    let fill="#3D5E80";
+    if(w.cap!=null){ if(w.runKm>w.cap) fill="#E2654F"; else if(w.runKm>0.9*w.cap) fill="#E3B341"; }
+    if(w.runKm>0) s+='<rect x="'+x+'" y="'+y(w.runKm)+'" width="'+wpx+'" height="'+(pad.t+ih-y(w.runKm))+'" fill="'+fill+'" rx="1.5"/>';
+    if(w.cap!=null) s+='<line x1="'+(pad.l+i*bw+bw*0.08)+'" x2="'+(pad.l+i*bw+bw*0.92)+'" y1="'+y(w.cap)+'" y2="'+y(w.cap)+'" stroke="#E9EEF5" stroke-width="1.6" stroke-dasharray="3 2"/>';
+    if(i%2===(weeks.length-1)%2) s+=txt(pad.l+i*bw+bw/2,H-8,"v"+weekNo(w.start),"#5C687C",9,"middle"); });
+  s+="</svg>";
+  $("#ch-run").innerHTML=s;
+}
+
+function renderIntensity(inten, plan){
+  const c=$("#ch-intensity");
+  if(!inten){ c.innerHTML='<div class="empty">Inga pass med pulszondata senaste 14 dagarna.</div>'; return; }
+  const ph=currentPhase(plan), tgt=ph&&ph.target!=null? ph.target : null;
+  const lo=Math.round(inten.loPct), hi=100-lo;
+  c.innerHTML='<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">'+
+    '<span class="kpi">'+lo+'<small> % lågintensivt (Z1–Z2)</small></span>'+
+    (tgt!=null? '<span style="color:var(--mut);font-size:13px">Fasens mål: ~'+tgt+' %'+(ph?' ('+esc(ph.name)+')':'')+'</span>':'')+'</div>'+
+    '<div class="splitbar"><div class="lo" style="width:'+lo+'%"></div><div class="hi" style="width:'+hi+'%"></div>'+
+    (tgt!=null? '<div class="tgt" style="left:'+tgt+'%" title="Mål"></div>':'')+'</div>'+
+    '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--faint)">'+
+    '<span>Lågt '+n1(inten.lo/3600)+' h</span><span>Hårt (Z3+) '+n1(inten.hi/3600)+' h</span></div>'+
+    '<div style="font-size:12.5px;color:var(--faint);margin-top:8px">Z3 räknas som hårt arbete enligt polariserad modell.</div>';
+}
+
+function scatter(el, pts, opts){
+  const W=320,H=150,pad={l:38,r:8,t:10,b:20}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  if(pts.length<2){ el.innerHTML='<div class="empty">'+(opts.empty||"För få datapunkter ännu.")+'</div>'; return; }
+  const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+  const x0=Math.min(...xs), x1=Math.max(...xs)||x0+1;
+  let y0=Math.min(...ys), y1=Math.max(...ys); const padY=(y1-y0)*0.15||1; y0-=padY; y1+=padY;
+  const X=(v)=>pad.l+iw*(v-x0)/Math.max(1,(x1-x0));
+  const Y=(v)=>opts.invert? pad.t+ih*(v-y0)/(y1-y0) : pad.t+ih-ih*(v-y0)/(y1-y0);
+  let s=svgOpen(W,H);
+  for(const f of [0.25,0.75]){ const v=y0+(y1-y0)*f;
+    s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="#1E2A3D"/>';
+    s+=txt(pad.l-4,Y(v)+3,opts.yfmt(v),"#5C687C",9,"end"); }
+  const reg=linreg(pts);
+  if(reg) s+='<line x1="'+X(x0)+'" y1="'+Y(reg.a*x0+reg.b)+'" x2="'+X(x1)+'" y2="'+Y(reg.a*x1+reg.b)+'" stroke="'+opts.color+'" stroke-width="1.5" opacity="0.55" stroke-dasharray="4 3"/>';
+  for(const p of pts){
+    s+= p.hollow? '<circle cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="3.6" fill="none" stroke="'+opts.color+'" stroke-width="1.6"><title>'+esc(p.tip)+'</title></circle>'
+                : '<circle cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="3.8" fill="'+opts.color+'"><title>'+esc(p.tip)+'</title></circle>'; }
+  s+=txt(pad.l,H-6,dfmt(new Date(x0)),"#5C687C",9);
+  s+=txt(W-pad.r,H-6,dfmt(new Date(x1)),"#5C687C",9,"end");
+  s+="</svg>";
+  el.innerHTML=s;
+}
+
+function renderEfficiency(ms){
+  const acts=data.activities.slice().sort((a,b)=>actDate(a)-actDate(b));
+  const bike=acts.filter(a=>sportOf(a)==="bike").map(a=>{ const hr=actHR(a), w=actW(a), d=actDate(a);
+      return (d&&hr>=130&&hr<=145&&w>50)? {x:+d, y:w, hollow:!(a.trainer||/virtual/i.test(a.type||"")),
+        tip:dfmt(d)+" · "+Math.round(w)+" W @ "+Math.round(hr)+" bpm"} : null; }).filter(Boolean);
+  scatter($("#ch-bike"), bike, {color:COLORS.bike, yfmt:v=>Math.round(v)+" W",
+    empty:"Inga Z2-pass med wattdata ännu (spinning eller wattpedal)."});
+  const run=acts.filter(a=>sportOf(a)==="run").map(a=>{ const hr=actHR(a), d=actDate(a);
+      if(!d||!(hr>=124&&hr<=150)||(a.moving_time||0)<1800||!(a.distance>0)) return null;
+      const pace=a.moving_time/(a.distance/1000);
+      return {x:+d, y:pace, tip:dfmt(d)+" · "+paceFmt(pace)+"/km @ "+Math.round(hr)+" bpm"}; }).filter(Boolean);
+  scatter($("#ch-runeff"), run, {color:COLORS.run, invert:true, yfmt:v=>paceFmt(v),
+    empty:"Inga Z2-löppass ≥30 min ännu."});
+  const swimEl=$("#ch-swim");
+  const swim=acts.filter(a=>sportOf(a)==="swim"&&a.distance>=400&&a.moving_time>0).map(a=>{ const d=actDate(a);
+      const pace=100*a.moving_time/a.distance;
+      return {x:+d, y:pace, tip:dfmt(d)+" · "+paceFmt(pace)+"/100 m · "+Math.round(a.distance)+" m"}; });
+  const cont=ms.filter(m=>m.gren==="swim"&&m.varde&&(m.done||m.plan)).map(m=>({d:m.done||m.plan, v:m.varde})).sort((a,b)=>a.d-b.d);
+  let extra="";
+  if(cont.length){ const mx=Math.max(...cont.map(c=>c.v));
+    extra='<div style="display:flex;gap:6px;align-items:flex-end;height:34px;margin-bottom:8px">'+
+      cont.map(c=>'<div title="'+dfmt(c.d)+' · '+Math.round(c.v)+' m" style="flex:1;max-width:34px;background:#244B5C;border-radius:3px 3px 0 0;height:'+Math.max(12,34*c.v/mx)+'px"></div>').join("")+
+      '</div><div style="font-size:11.5px;color:var(--faint);margin-bottom:6px">Längsta kontinuerligt: '+Math.round(Math.max(...cont.map(c=>c.v)))+' m</div>'; }
+  swimEl.innerHTML=extra+'<div id="ch-swim-pace"></div>';
+  scatter($("#ch-swim-pace"), swim, {color:COLORS.swim, invert:true, yfmt:v=>paceFmt(v),
+    empty:"Inga simpass i datan ännu."});
+}
+
+function renderAll(ts){
+  const plan=getPlan(), ms=getMilestones(), weeks=weeklyAgg(12), inten=intensity14();
+  renderHeader(plan);
+  $("#tl-band").parentElement.querySelectorAll(".tl-today").forEach(e=>e.remove());
+  renderTimeline(plan);
+  renderFlags(computeFlags(weeks, plan, inten, ms));
+  renderMilestones(ms);
+  renderVolume(weeks, plan);
+  renderRun(weeks);
+  renderIntensity(inten, plan);
+  renderEfficiency(ms);
+  ["#sec-delmal","#sec-belastning","#sec-intensitet","#sec-effektivitet"].forEach(s=>$(s).hidden=false);
+  $("#onboard").innerHTML="";
+  if(ts) $("#lastupd").textContent="Uppdaterad "+new Date(ts).toLocaleString("sv-SE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+}
+
+/* ============ Inställningar & start ============ */
+function loadCfg(){ try{ return JSON.parse(localStorage.getItem(CFG_KEY)); }catch(e){ return null; } }
+function openSettings(){ const c=cfg||{};
+  $("#in-key").value=c.apiKey||""; $("#in-id").value=c.athleteId||"";
+  $("#in-plan").value=c.planUrl||""; $("#in-ms").value=c.msUrl||""; $("#in-proxy").value=c.proxy||"";
+  $("#settings").classList.add("show"); }
+function closeSettings(){ $("#settings").classList.remove("show"); }
+function saveSettings(){
+  cfg={ apiKey:$("#in-key").value.trim(), athleteId:$("#in-id").value.trim(),
+        planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), proxy:$("#in-proxy").value.trim() };
+  if(cfg.athleteId && !/^i/i.test(cfg.athleteId) && /^\d+$/.test(cfg.athleteId)) cfg.athleteId="i"+cfg.athleteId;
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  closeSettings(); refreshAll(); }
+
+function showOnboarding(){
+  $("#onboard").innerHTML='<div class="card"><div class="cardtitle">Kom igång</div>'+
+    '<p style="color:var(--mut);font-size:14px;margin:6px 0 12px">Appen läser passdata från intervals.icu och plan/delmål från ett Google Sheet. Allt sparas lokalt i din webbläsare — inget skickas någon annanstans.</p>'+
+    '<button class="btn primary" id="btn-onboard">Öppna inställningar</button></div>';
+  $("#btn-onboard").addEventListener("click",openSettings); }
+
+function boot(){
+  $("#btn-settings").addEventListener("click",openSettings);
+  $("#btn-close").addEventListener("click",closeSettings);
+  $("#btn-save").addEventListener("click",saveSettings);
+  $("#btn-refresh").addEventListener("click",refreshAll);
+  $("#settings").addEventListener("click",e=>{ if(e.target.id==="settings") closeSettings(); });
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeSettings(); });
+  cfg=loadCfg();
+  const plan=getPlan(); renderHeader(plan); renderTimeline(plan);
+  if(!cfg||!cfg.apiKey){ showOnboarding(); renderFlags([]); return; }
+  try{ const c=JSON.parse(localStorage.getItem(CACHE_KEY));
+    if(c&&c.data){ data=c.data; renderAll(c.ts); } }catch(e){}
+  refreshAll(); }
+document.addEventListener("DOMContentLoaded", boot);
+
+</script>
+</body>
+</html>
