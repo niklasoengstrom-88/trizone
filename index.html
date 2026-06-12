@@ -99,6 +99,12 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 /* ---------- Delmål ---------- */
 .msgroup{margin-bottom:14px}
 .msgroup h3{font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin:0 2px 6px}
+.mshead{cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:6px}
+.mshead:hover{color:var(--mut)}
+.mshead .chev{font-size:10px}
+.msprog{display:flex; align-items:center; gap:10px; margin:2px 2px 12px; font-size:12px; color:var(--faint)}
+.msprog .bar{flex:1; height:4px; border-radius:99px; background:#1A2436; overflow:hidden}
+.msprog .bar i{display:block; height:100%; background:var(--ok); border-radius:99px}
 .ms{display:flex; align-items:center; gap:10px; padding:11px 13px; background:var(--surface);
   border:1px solid var(--line); border-radius:12px; margin-bottom:6px; cursor:pointer}
 .ms .dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto}
@@ -595,6 +601,7 @@ function renderFlags(flags){
   c.innerHTML=flags.map(f=>'<div class="flag '+f.lv+'"><div><b>'+esc(f.t)+'</b><span class="d">'+esc(f.d)+'</span></div></div>').join("");
 }
 
+let msDoneOpen=false;
 function renderMilestones(ms){
   const c=$("#ms-list");
   if(!ms.length){ c.innerHTML='<div class="empty">Inga delmål ännu — lägg rader i fliken Delmal i ditt Sheet.</div>'; return; }
@@ -611,7 +618,13 @@ function renderMilestones(ms){
     '<span class="txt"><b>'+esc(m.desc)+'</b><span class="dates">'+(SPORT_LABEL[m.gren]||"")+' · plan '+dfmt(m.plan)+(m.done? " → klart "+dfmt(m.done):"")+(m.varde?" · "+n1(m.varde):"")+'</span></span>'+
     pill(m)+(m.note? '<span class="note">'+esc(m.note)+'</span>':'')+'</div>';
   const grp=(title,arr)=>arr.length? '<div class="msgroup"><h3>'+title+'</h3>'+arr.map(row).join("")+'</div>' : "";
-  c.innerHTML=grp("Nu — inom 14 dagar",g1)+grp("Senare",g2)+grp("Avklarade",g3);
+  const prog= ms.length? '<div class="msprog"><div class="bar"><i style="width:'+Math.round(100*g3.length/ms.length)+'%"></i></div><span>'+g3.length+' av '+ms.length+' klara</span></div>' : "";
+  const done= g3.length? '<div class="msgroup"><h3 class="mshead" id="ms-done-h" role="button" tabindex="0" aria-expanded="'+msDoneOpen+'">Avklarade · '+g3.length+' <span class="chev">'+(msDoneOpen?"▾":"▸")+'</span></h3><div id="ms-done"'+(msDoneOpen?"":" hidden")+'>'+g3.map(row).join("")+'</div></div>' : "";
+  c.innerHTML=prog+grp("Nu — inom 14 dagar",g1)+grp("Senare",g2)+done;
+  const dh=$("#ms-done-h");
+  if(dh){ const tgd=()=>{ msDoneOpen=!msDoneOpen; renderMilestones(ms); };
+    dh.addEventListener("click",tgd);
+    dh.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();tgd();} }); }
   c.querySelectorAll(".ms").forEach(el=>{ const tg=()=>el.classList.toggle("open");
     el.addEventListener("click",tg);
     el.addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();tg();} }); });
@@ -731,7 +744,9 @@ function weekSummary(){
   const add=(o,s,a)=>{ o[s]=o[s]||{t:0,km:0,n:0}; o[s].t+=(a.moving_time||0)/3600; o[s].km+=(a.distance||0)/1000; o[s].n++; };
   for(const a of data.activities){ const d=actDate(a); if(!d) continue;
     const s=sportOf(a);
-    if(d>=w0&&d<w1){ add(cur,s,a); const i=Math.round((d-w0)/DAY); if(i>=0&&i<7) days[i].push(s); }
+    if(d>=w0&&d<w1){ add(cur,s,a); const i=Math.round((d-w0)/DAY);
+      if(i>=0&&i<7){ const st=new Date(a.start_date_local||a.start_date||d);
+        days[i].push({s, st:+st, en:+st+(a.moving_time||0)*1000}); } }
     else if(d>=p0&&d<w0){ add(prev,s,a); } }
   return {w0,cur,prev,days}; }
 
@@ -741,7 +756,13 @@ function renderWeek(ws){
   const L=["M","T","O","T","F","L","S"];
   $("#weekstrip").innerHTML=L.map((l,i)=>{
     const cls="wd"+(i===ti?" today":"")+(i>ti?" future":"");
-    const dots=ws.days[i].slice(0,3).map(s=>'<span class="dot" style="background:'+(COLORS[s]||COLORS.other)+'"></span>').join("");
+    const list=ws.days[i].slice().sort((a,b)=>a.st-b.st), show=[];
+    for(let k=0;k<list.length;k++){ const c0=list[k], nx=list[k+1];
+      if(c0.s==="bike"&&nx&&nx.s==="run"&&nx.st-c0.en<=1800000&&nx.st-c0.en>=-300000){ show.push("brick"); k++; }
+      else show.push(c0.s); }
+    const dots=show.slice(0,3).map(s=> s==="brick"
+      ? '<span class="dot" title="Brick" style="background:linear-gradient(135deg,'+COLORS.bike+' 50%,'+COLORS.run+' 50%)"></span>'
+      : '<span class="dot" style="background:'+(COLORS[s]||COLORS.other)+'"></span>').join("");
     return '<div class="'+cls+'"><span class="lbl">'+l+'</span><span class="cell">'+(dots||'<span class="none"></span>')+'</span></div>'; }).join("");
   const order=["swim","bike","run","strength","other"];
   let rows="", tot=0, ptot=0, totN=0, first=true;
