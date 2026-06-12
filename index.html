@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0C1320">
-<title>Mot Holmsjö — träningsöversikt</title>
+<title>TRIZONE — mot Holmsjö</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -41,7 +41,7 @@ header.hero{max-width:1060px; margin:0 auto; padding:22px 16px 6px; display:flex
 .iconbtn:hover{color:var(--ink); border-color:#2C3D58}
 
 /* ---------- Timeline (signatur) ---------- */
-.timeline{position:relative; margin:14px 0 6px}
+.timeline{position:relative; margin:24px 0 6px}
 .tl-band{display:flex; height:42px; border-radius:10px; overflow:hidden; border:1px solid var(--line)}
 .tl-seg{position:relative; display:flex; align-items:center; justify-content:center; background:var(--surface2);
   border-right:1px solid var(--line); min-width:0; cursor:pointer; transition:background .15s}
@@ -54,8 +54,14 @@ header.hero{max-width:1060px; margin:0 auto; padding:22px 16px 6px; display:flex
 .tl-seg.current span{color:var(--ink)}
 .tl-seg:hover{background:#1B2740}
 .tl-seg.sel{outline:2px solid #3D6396; outline-offset:-2px}
-.tl-race{position:absolute; right:-1px; top:-9px; font-size:17px; line-height:1}
-.tl-today{position:absolute; top:-6px; bottom:-6px; width:2px; background:var(--ink); border-radius:2px}
+.tl-stub{flex:0 0 40px; display:flex; align-items:center; justify-content:center; background:#101826; border-right:1px solid var(--line); cursor:pointer; color:var(--faint); font-size:16px}
+.tl-stub:hover{color:var(--ink)}
+.tl-flag{position:absolute; top:-14px; transform:translateX(-50%); background:none; border:none; padding:0; font-size:14px; line-height:1; cursor:pointer; z-index:2; opacity:.75}
+.tl-flag.major{font-size:19px; top:-18px; opacity:1}
+.tl-tools{display:flex; justify-content:flex-end; margin-top:6px}
+.tl-tools button{background:none; border:none; color:var(--faint); font-size:12px; padding:2px 0; text-decoration:underline; text-underline-offset:3px; cursor:pointer}
+.tl-tools button:hover{color:var(--ink)}
+.tl-today{position:absolute; top:-6px; height:54px; width:2px; background:var(--ink); border-radius:2px; pointer-events:none}
 .tl-today::after{content:""; position:absolute; top:-7px; left:50%; transform:translateX(-50%);
   width:10px; height:10px; border-radius:50%; background:var(--ink); box-shadow:0 0 0 0 rgba(233,238,245,.5);
   animation:pulse 2.4s ease-out infinite}
@@ -160,10 +166,11 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 
 <header class="hero">
   <div>
-    <div class="eyebrow" id="eyebrow">Triathlon · Olympisk distans</div>
+    <div class="eyebrow" id="eyebrow">TRIZONE · Olympisk distans</div>
     <h1 id="racename">Mot Holmsjö</h1>
     <div class="countdown"><span class="n" id="cd-n">–</span><span class="u" id="cd-u">dagar kvar</span></div>
     <div class="racedate" id="cd-date"></div>
+    <div class="racedate" id="cd-next"></div>
   </div>
   <button class="iconbtn" id="btn-settings" title="Inställningar" aria-label="Inställningar">⚙</button>
 </header>
@@ -375,11 +382,16 @@ async function refreshAll(){
   const fails=[];
   res.forEach((r,i)=>{ if(r.status==="fulfilled") data[keys[i]]=r.value;
     else fails.push(keys[i]+": "+(r.reason&&r.reason.message||r.reason)); });
+  const msgs=[];
   if(fails.length){
     const corsHint=fails.some(f=>/Failed to fetch|NetworkError|TypeError/i.test(f));
-    showBanner("Kunde inte hämta: "+fails.join(" · ")+
-      (corsHint? " — Troligen CORS-blockering. Lägg in ett proxy-prefix under Inställningar (instruktion i README)." : ""));
-  } else hideBanner();
+    msgs.push("Kunde inte hämta: "+fails.join(" · ")+
+      (corsHint? " — Troligen CORS-blockering. Lägg in ett proxy-prefix under Inställningar." : "")); }
+  const badTabs=[];
+  if(cfg.planUrl && !(Array.isArray(data.plan)&&data.plan.length&&"typ" in data.plan[0])) badTabs.push("Plan");
+  if(cfg.msUrl && !(Array.isArray(data.milestones)&&data.milestones.length&&"gren" in data.milestones[0])) badTabs.push("Delmal");
+  if(badTabs.length) msgs.push("Länken för "+badTabs.join(" och ")+" gav ingen läsbar CSV. Kontrollera att den kommer från Arkiv → Dela → Publicera på webben (flik + format CSV) i ett Google Kalkylark — inte en vanlig fil- eller delningslänk.");
+  if(msgs.length) showBanner(msgs.join(" — ")); else hideBanner();
   localStorage.setItem(CACHE_KEY, JSON.stringify({ts:Date.now(), data}));
   $("#btn-refresh").disabled=false; $("#btn-refresh").textContent="Uppdatera";
   renderAll(Date.now());
@@ -389,16 +401,19 @@ function hideBanner(){ $("#banner").classList.remove("show"); }
 
 /* ============ Beräkningar ============ */
 function getPlan(){
-  const phases=[], rests=[]; let race=null;
+  const phases=[], rests=[], races=[];
   for(const r of data.plan){
     const typ=(r.typ||"").toLowerCase();
     const row={name:r.namn||"", start:pd(r.start), end:pd(r.slut), target:parseFloat((r.mallag||"").replace(",","."))||null, note:r.anteckning||""};
-    if(typ==="race"&&row.start){ race={name:row.name||FALLBACK_RACE.name, date:row.start, note:row.note}; }
+    if(typ==="race"&&row.start){ races.push({name:row.name||FALLBACK_RACE.name, date:row.start, note:row.note}); }
     else if(typ==="vila"&&row.start){ rests.push(row); }
     else if(row.start&&row.end){ phases.push(row); } }
   phases.sort((a,b)=>a.start-b.start);
-  if(!race) race={name:FALLBACK_RACE.name, date:pd(FALLBACK_RACE.date), note:""};
-  return {phases, rests, race}; }
+  races.sort((a,b)=>a.date-b.date);
+  if(!races.length) races.push({name:FALLBACK_RACE.name, date:pd(FALLBACK_RACE.date), note:""});
+  const t=today();
+  const race = races.find(r=>r.date>=t) || races[races.length-1];
+  return {phases, rests, races, race}; }
 
 function currentPhase(plan){ const t=today();
   return plan.phases.find(p=>t>=p.start&&t<=p.end) || null; }
@@ -473,19 +488,44 @@ function renderHeader(plan){
   $("#cd-n").textContent = days>=0? days : "✓";
   $("#cd-u").textContent = days>1? "dagar kvar" : days===1? "dag kvar" : days===0? "RACE-DAG" : "genomfört";
   $("#cd-date").textContent = r.name+" · "+r.date.toLocaleDateString("sv-SE",{day:"numeric",month:"long",year:"numeric"})+" · vecka "+weekNo(r.date);
+  const up=(plan.races||[]).filter(x=>x.date>=t);
+  const nxt=up.length>1? up[1] : null;
+  $("#cd-next").textContent = nxt? "Därefter: "+nxt.name+" · "+dfmt(nxt.date)+" (om "+Math.ceil((nxt.date-t)/DAY)+" dagar)" : "";
 }
 
+let tlFull=false, _plan=null;
+function isLandscape(){ return matchMedia("(orientation: landscape)").matches; }
 function renderTimeline(plan){
-  const band=$("#tl-band"), det=$("#tl-detail");
-  if(!plan.phases.length){ band.innerHTML='<div class="tl-seg" style="flex:1"><span>Lägg in faser i fliken Plan</span></div>'; return; }
-  const t=today(), t0=plan.phases[0].start, t1=plan.race.date>plan.phases[plan.phases.length-1].end? plan.race.date : plan.phases[plan.phases.length-1].end;
-  const span=t1-t0;
+  _plan=plan;
+  const band=$("#tl-band"), det=$("#tl-detail"), wrap=band.parentElement;
+  wrap.querySelectorAll(".tl-today,.tl-flag,.tl-tools").forEach(e=>e.remove());
   band.innerHTML="";
-  plan.phases.forEach((p,i)=>{
-    const w=100*(Math.min(p.end,t1)-p.start+DAY)/span;
+  const t=today(), races=plan.races||[];
+  if(!plan.phases.length&&!races.length){ band.innerHTML='<div class="tl-seg" style="flex:1"><span>Lägg in faser i fliken Plan</span></div>'; return; }
+  const tStart = plan.phases.length? plan.phases[0].start : races[0].date;
+  let tEnd = plan.phases.length? plan.phases[plan.phases.length-1].end : tStart;
+  for(const r of races) if(r.date>tEnd) tEnd=r.date;
+  const full = tlFull || isLandscape();
+  let w0 = full? tStart : new Date(Math.max(+tStart, +addDays(t,-30)));
+  if(+w0>=+tEnd) w0=tStart;
+  const span = (tEnd-w0)||1;
+  const hidden = plan.phases.filter(p=>p.end<w0);
+  const stubW = (!full&&hidden.length)? 40 : 0;
+  if(stubW){
+    const stub=document.createElement("div"); stub.className="tl-stub"; stub.tabIndex=0;
+    stub.title="Visa hela planen ("+hidden.map(p=>p.name).join(", ")+")";
+    stub.setAttribute("role","button"); stub.setAttribute("aria-label",stub.title);
+    stub.textContent="‹";
+    const go=()=>{ tlFull=true; renderTimeline(plan); };
+    stub.addEventListener("click",go);
+    stub.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();go();} });
+    band.appendChild(stub); }
+  plan.phases.filter(p=>p.end>=w0).forEach(p=>{
+    const a=Math.max(+p.start,+w0), b=Math.min(+p.end,+tEnd);
+    const f=(b-a+DAY)/span;
     const seg=document.createElement("div");
     seg.className="tl-seg"+(t>p.end?" past":"")+(t>=p.start&&t<=p.end?" current":"");
-    seg.style.flexBasis=w+"%"; seg.style.flexGrow="0";
+    seg.style.flexGrow=String(Math.max(f,0.02)*1000); seg.style.flexBasis="0";
     seg.setAttribute("role","listitem"); seg.tabIndex=0;
     seg.innerHTML="<span>"+esc(p.name)+"</span>";
     const show=()=>{ document.querySelectorAll(".tl-seg.sel").forEach(e=>e.classList.remove("sel")); seg.classList.add("sel");
@@ -496,11 +536,28 @@ function renderTimeline(plan){
     seg.addEventListener("click",show);
     seg.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();show();} });
     band.appendChild(seg); });
-  const todayPct=100*Math.min(Math.max(t-t0,0),span)/span;
-  const mark=document.createElement("div"); mark.className="tl-today"; mark.style.left="calc("+todayPct+"% - 1px)";
-  mark.title="Idag"; band.parentElement.appendChild(mark);
-  const flag=document.createElement("div"); flag.className="tl-race"; flag.textContent="🏁"; flag.title=plan.race.name;
-  band.appendChild(flag);
+  const pos=(d)=>{ const f=Math.min(Math.max((+d-+w0)/span,0),1);
+    return stubW? "calc("+stubW+"px + (100% - "+stubW+"px)*"+f.toFixed(4)+")" : (100*f).toFixed(2)+"%"; };
+  if(+t>=+w0&&+t<=+tEnd){
+    const mark=document.createElement("div"); mark.className="tl-today"; mark.style.left=pos(t); mark.title="Idag";
+    wrap.appendChild(mark); }
+  races.forEach(r=>{
+    const fl=document.createElement("button"); fl.type="button";
+    fl.className="tl-flag"+(r===plan.race?" major":"");
+    fl.style.left=pos(r.date); fl.textContent="🏁";
+    fl.title=r.name+" · "+dfmt(r.date); fl.setAttribute("aria-label",fl.title);
+    fl.addEventListener("click",()=>{
+      det.innerHTML="<b>"+esc(r.name)+"</b><div class='meta'>"+r.date.toLocaleDateString("sv-SE",{day:"numeric",month:"long",year:"numeric"})+
+        " · v"+weekNo(r.date)+" · om "+Math.ceil((r.date-t)/DAY)+" dagar</div>"+
+        (r.note? "<div style='margin-top:4px'>"+esc(r.note)+"</div>":"");
+      det.classList.add("show"); });
+    wrap.appendChild(fl); });
+  if(!isLandscape()){
+    const tools=document.createElement("div"); tools.className="tl-tools";
+    const b=document.createElement("button"); b.type="button";
+    b.textContent= full? "Fokusera på nu" : "Visa hela planen";
+    b.addEventListener("click",()=>{ tlFull=!tlFull; renderTimeline(plan); });
+    tools.appendChild(b); wrap.appendChild(tools); }
 }
 
 function renderFlags(flags){
@@ -679,6 +736,9 @@ function boot(){
   $("#btn-refresh").addEventListener("click",refreshAll);
   $("#settings").addEventListener("click",e=>{ if(e.target.id==="settings") closeSettings(); });
   document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeSettings(); });
+  const mq=matchMedia("(orientation: landscape)");
+  const onOri=()=>{ if(_plan) renderTimeline(_plan); };
+  if(mq.addEventListener) mq.addEventListener("change",onOri); else if(mq.addListener) mq.addListener(onOri);
   cfg=loadCfg();
   const plan=getPlan(); renderHeader(plan); renderTimeline(plan);
   if(!cfg||!cfg.apiKey){ showOnboarding(); renderFlags([]); return; }
