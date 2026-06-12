@@ -126,6 +126,24 @@ svg{display:block; width:100%; height:auto}
 .splitbar .hi{background:#7A3B30}
 .splitbar .tgt{position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--ink)}
 
+/* ---------- Veckan ---------- */
+.weekstrip{display:flex; gap:6px; margin-bottom:14px}
+.wd{flex:1; display:flex; flex-direction:column; align-items:center; gap:7px; padding-bottom:8px; position:relative}
+.wd .lbl{font-family:var(--disp); font-weight:600; font-size:12px; letter-spacing:.12em; color:var(--faint)}
+.wd .cell{min-height:12px; display:flex; gap:3px; align-items:center; justify-content:center}
+.wd .dot{width:9px; height:9px; border-radius:50%}
+.wd .none{width:7px; height:7px; border-radius:50%; border:1px solid #2A3850}
+.wd.today .lbl{color:var(--ink)}
+.wd.today::after{content:""; position:absolute; bottom:0; width:14px; height:2px; border-radius:2px; background:var(--ink)}
+.wd.future{opacity:.4}
+.wkrow{display:flex; justify-content:space-between; align-items:baseline; padding:8px 0; border-top:1px solid var(--line); font-size:14px}
+.wkrow.first{border-top:0}
+.wkrow.total{font-weight:600}
+.wkrow .nm{display:flex; align-items:center; gap:8px}
+.wkrow .nm i{width:9px; height:9px; border-radius:3px; display:inline-block}
+.wkrow .val{font-variant-numeric:tabular-nums; text-align:right}
+.wkrow .delta{font-size:12px; color:var(--faint); margin-left:8px; font-variant-numeric:tabular-nums}
+
 /* ---------- Tomt läge / fel ---------- */
 .empty{color:var(--faint); font-size:13.5px; padding:8px 2px}
 #banner{display:none; margin-top:14px; padding:11px 13px; border-radius:12px; border:1px solid #5C322C;
@@ -187,6 +205,17 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
   </section>
 
   <div id="onboard"></div>
+
+  <section id="sec-vecka" hidden>
+    <h2>Veckan <small id="vecka-sub"></small></h2>
+    <div class="card">
+      <div class="weekstrip" id="weekstrip"></div>
+      <div id="weektable"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button class="btn" id="btn-report">Kopiera veckorapport</button>
+      </div>
+    </div>
+  </section>
 
   <section id="sec-delmal" hidden>
     <h2>Delmål <small>plan vs utfall per gren</small></h2>
@@ -693,6 +722,76 @@ function renderEfficiency(ms){
     empty:"Inga simpass i datan ännu."});
 }
 
+function fmtH(h){ const H=Math.floor(h), M=Math.round((h-H)*60);
+  if(M===60) return (H+1)+" h 00"; return H? H+" h "+String(M).padStart(2,"0") : M+" min"; }
+
+function weekSummary(){
+  const t=today(), w0=monday(t), w1=addDays(w0,7), p0=addDays(w0,-7);
+  const cur={}, prev={}, days=Array.from({length:7},()=>[]);
+  const add=(o,s,a)=>{ o[s]=o[s]||{t:0,km:0,n:0}; o[s].t+=(a.moving_time||0)/3600; o[s].km+=(a.distance||0)/1000; o[s].n++; };
+  for(const a of data.activities){ const d=actDate(a); if(!d) continue;
+    const s=sportOf(a);
+    if(d>=w0&&d<w1){ add(cur,s,a); const i=Math.round((d-w0)/DAY); if(i>=0&&i<7) days[i].push(s); }
+    else if(d>=p0&&d<w0){ add(prev,s,a); } }
+  return {w0,cur,prev,days}; }
+
+function renderWeek(ws){
+  const t=today(), ti=Math.round((t-ws.w0)/DAY);
+  $("#vecka-sub").textContent="v"+weekNo(ws.w0)+" · jämfört med förra veckan";
+  const L=["M","T","O","T","F","L","S"];
+  $("#weekstrip").innerHTML=L.map((l,i)=>{
+    const cls="wd"+(i===ti?" today":"")+(i>ti?" future":"");
+    const dots=ws.days[i].slice(0,3).map(s=>'<span class="dot" style="background:'+(COLORS[s]||COLORS.other)+'"></span>').join("");
+    return '<div class="'+cls+'"><span class="lbl">'+l+'</span><span class="cell">'+(dots||'<span class="none"></span>')+'</span></div>'; }).join("");
+  const order=["swim","bike","run","strength","other"];
+  let rows="", tot=0, ptot=0, totN=0, first=true;
+  for(const s of order){ const c=ws.cur[s], p=ws.prev[s]; if(!c&&!p) continue;
+    const ct=c?c.t:0, pt=p?p.t:0; tot+=ct; ptot+=pt; totN+=c?c.n:0;
+    let val=c? fmtH(ct) : "–";
+    if(c&&s==="swim"&&c.km>0) val+=" · "+Math.round(c.km*1000)+" m";
+    else if(c&&c.km>0.1&&s!=="strength") val+=" · "+n1(c.km)+" km";
+    const d=ct-pt, dTxt=Math.abs(d)<0.017? "±0" : (d>0?"▲ ":"▼ ")+fmtH(Math.abs(d));
+    rows+='<div class="wkrow'+(first?" first":"")+'"><span class="nm"><i style="background:'+(COLORS[s]||COLORS.other)+'"></i>'+SPORT_LABEL[s]+
+      (c&&c.n?' <span style="color:var(--faint)">×'+c.n+'</span>':'')+'</span><span class="val">'+val+'<span class="delta">'+dTxt+'</span></span></div>';
+    first=false; }
+  if(!rows) rows='<div class="empty">Inga pass registrerade denna vecka ännu.</div>';
+  else { const d=tot-ptot, dTxt=Math.abs(d)<0.017? "±0" : (d>0?"▲ ":"▼ ")+fmtH(Math.abs(d));
+    rows+='<div class="wkrow total"><span class="nm">Totalt <span style="color:var(--faint)">×'+totN+'</span></span><span class="val">'+fmtH(tot)+'<span class="delta">'+dTxt+'</span></span></div>'; }
+  $("#weektable").innerHTML=rows; }
+
+function buildReport(){
+  const plan=getPlan(), inten=intensity14(), weeks=weeklyAgg(12), ms=getMilestones();
+  const flags=computeFlags(weeks, plan, inten, ms);
+  const ws=weekSummary(), t=today();
+  const L=["TRIZONE veckorapport v"+weekNo(ws.w0)+" ("+dfmt(ws.w0)+"–"+dfmt(addDays(ws.w0,6))+", t.o.m. idag "+dfmt(t)+")"];
+  const order=["swim","bike","run","strength","other"];
+  let tot=0, totN=0;
+  for(const s of order){ const c=ws.cur[s]; if(!c) continue; tot+=c.t; totN+=c.n;
+    let line=SPORT_LABEL[s]+": "+c.n+" pass · "+fmtH(c.t);
+    if(s==="swim"&&c.km>0) line+=" · "+Math.round(c.km*1000)+" m";
+    else if(c.km>0.1&&s!=="strength") line+=" · "+n1(c.km)+" km";
+    const p=ws.prev[s]; line+=" (förra veckan: "+(p? fmtH(p.t):"0")+")";
+    L.push(line); }
+  L.push("Totalt: "+totN+" pass · "+fmtH(tot));
+  const cw=weeks[weeks.length-1];
+  if(cw&&cw.cap!=null) L.push("Löpvolym: "+n1(cw.runKm)+" km av tak "+n1(cw.cap)+" km (110 %-regeln)");
+  if(inten){ const ph=currentPhase(plan);
+    L.push("Intensitet 14 d: "+Math.round(inten.loPct)+" % lågintensivt"+(ph&&ph.target!=null? " — fasmål ~"+ph.target+" % ("+ph.name+")":"")); }
+  L.push(flags.length? "Flaggor:" : "Flaggor: inga");
+  for(const f of flags) L.push("• "+f.t+" — "+f.d);
+  const due=ms.filter(m=>m.status!=="done"&&m.plan&&m.plan<=addDays(t,14)).sort((a,b)=>a.plan-b.plan);
+  if(due.length){ L.push("Delmål inom 14 dagar:");
+    for(const m of due) L.push("• "+m.desc+" ("+dfmt(m.plan)+")"); }
+  return L.join("\n"); }
+
+async function copyReport(){
+  const txt=buildReport();
+  try{ await navigator.clipboard.writeText(txt); }
+  catch(e){ const ta=document.createElement("textarea"); ta.value=txt;
+    document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+  const b=$("#btn-report"), old=b.textContent;
+  b.textContent="Kopierad ✓"; setTimeout(()=>{ b.textContent=old; },1600); }
+
 function renderAll(ts){
   const plan=getPlan(), ms=getMilestones(), weeks=weeklyAgg(12), inten=intensity14();
   renderHeader(plan);
@@ -704,7 +803,8 @@ function renderAll(ts){
   renderRun(weeks);
   renderIntensity(inten, plan);
   renderEfficiency(ms);
-  ["#sec-delmal","#sec-belastning","#sec-intensitet","#sec-effektivitet"].forEach(s=>$(s).hidden=false);
+  renderWeek(weekSummary());
+  ["#sec-vecka","#sec-delmal","#sec-belastning","#sec-intensitet","#sec-effektivitet"].forEach(s=>$(s).hidden=false);
   $("#onboard").innerHTML="";
   if(ts) $("#lastupd").textContent="Uppdaterad "+new Date(ts).toLocaleString("sv-SE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 }
@@ -734,6 +834,7 @@ function boot(){
   $("#btn-close").addEventListener("click",closeSettings);
   $("#btn-save").addEventListener("click",saveSettings);
   $("#btn-refresh").addEventListener("click",refreshAll);
+  $("#btn-report").addEventListener("click",copyReport);
   $("#settings").addEventListener("click",e=>{ if(e.target.id==="settings") closeSettings(); });
   document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeSettings(); });
   const mq=matchMedia("(orientation: landscape)");
