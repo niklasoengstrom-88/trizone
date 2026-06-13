@@ -123,6 +123,17 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 
 /* ---------- Diagram ---------- */
 svg{display:block; width:100%; height:auto}
+.chart{position:relative}
+.tip{position:absolute; pointer-events:none; z-index:6; background:#0A1018; border:1px solid #2C3D58;
+  border-radius:8px; padding:5px 9px; font-size:11.5px; color:var(--ink); white-space:nowrap;
+  transform:translate(-50%,calc(-100% - 9px)); box-shadow:0 6px 18px rgba(0,0,0,.45); opacity:0; transition:opacity .1s}
+.tip.show{opacity:1}
+.tip.below{transform:translate(-50%,11px)}
+.tip::after{content:""; position:absolute; left:50%; transform:translateX(-50%); bottom:-5px;
+  border:5px solid transparent; border-top-color:#0A1018}
+.tip.below::after{top:-5px; bottom:auto; border-top-color:transparent; border-bottom-color:#0A1018}
+.tip.clamp::after{display:none}
+.hit{cursor:pointer}
 .legend{display:flex; flex-wrap:wrap; gap:12px; margin-top:8px; font-size:12px; color:var(--mut)}
 .legend i{display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:5px; vertical-align:0}
 .kpi{font-family:var(--disp); font-weight:700; font-size:30px; line-height:1}
@@ -686,7 +697,7 @@ function renderIntensity(inten, plan){
 
 function scatter(el, pts, opts){
   const W=320,H=150,pad={l:38,r:8,t:10,b:20}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
-  if(pts.length<2){ el.innerHTML='<div class="empty">'+(opts.empty||"För få datapunkter ännu.")+'</div>'; return; }
+  if(pts.length<2){ el.classList.remove("chart"); el.innerHTML='<div class="empty">'+(opts.empty||"För få datapunkter ännu.")+'</div>'; return; }
   const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
   const x0=Math.min(...xs), x1=Math.max(...xs)||x0+1;
   let y0=Math.min(...ys), y1=Math.max(...ys); const padY=(y1-y0)*0.15||1; y0-=padY; y1+=padY;
@@ -698,13 +709,38 @@ function scatter(el, pts, opts){
     s+=txt(pad.l-4,Y(v)+3,opts.yfmt(v),"#5C687C",9,"end"); }
   const reg=linreg(pts);
   if(reg) s+='<line x1="'+X(x0)+'" y1="'+Y(reg.a*x0+reg.b)+'" x2="'+X(x1)+'" y2="'+Y(reg.a*x1+reg.b)+'" stroke="'+opts.color+'" stroke-width="1.5" opacity="0.55" stroke-dasharray="4 3"/>';
-  for(const p of pts){
-    s+= p.hollow? '<circle cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="3.6" fill="none" stroke="'+opts.color+'" stroke-width="1.6"><title>'+esc(p.tip)+'</title></circle>'
-                : '<circle cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="3.8" fill="'+opts.color+'"><title>'+esc(p.tip)+'</title></circle>'; }
+  const pos=[];
+  pts.forEach((p,i)=>{ const cx=X(p.x), cy=Y(p.y); pos.push({cx,cy,tip:p.tip, hollow:!!p.hollow});
+    s+= p.hollow? '<circle class="pt" data-i="'+i+'" cx="'+cx+'" cy="'+cy+'" r="3.6" fill="none" stroke="'+opts.color+'" stroke-width="1.6"/>'
+                : '<circle class="pt" data-i="'+i+'" cx="'+cx+'" cy="'+cy+'" r="3.8" fill="'+opts.color+'"/>'; });
+  pts.forEach((p,i)=>{ s+='<circle class="hit" data-i="'+i+'" cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="12" fill="transparent"/>'; });
   s+=txt(pad.l,H-6,dfmt(new Date(x0)),"#5C687C",9);
   s+=txt(W-pad.r,H-6,dfmt(new Date(x1)),"#5C687C",9,"end");
   s+="</svg>";
+  el.classList.add("chart");
   el.innerHTML=s;
+  const tip=document.createElement("div"); tip.className="tip"; el.appendChild(tip);
+  const svg=el.querySelector("svg");
+  const ptEls=Array.prototype.slice.call(el.querySelectorAll(".pt"));
+  const baseR=(c)=>c.getAttribute("fill")==="none"? "3.6":"3.8";
+  let pinned=null;
+  function activate(i){
+    ptEls.forEach(c=>c.setAttribute("r",baseR(c)));
+    const c=ptEls[i], o=pos[i]; if(!c||!o) return;
+    c.setAttribute("r","5.6"); if(o.hollow) c.setAttribute("stroke-width","2.2");
+    tip.textContent=o.tip;
+    let lp=o.cx/W*100; const clamp=lp<16||lp>84; lp=Math.min(84,Math.max(16,lp));
+    tip.style.left=lp+"%"; tip.style.top=(o.cy/H*100)+"%";
+    tip.classList.toggle("below", o.cy/H*100<26);
+    tip.classList.toggle("clamp", clamp);
+    tip.classList.add("show");
+  }
+  function deactivate(){ tip.classList.remove("show"); ptEls.forEach(c=>{ c.setAttribute("r",baseR(c)); if(c.getAttribute("fill")==="none") c.setAttribute("stroke-width","1.6"); }); }
+  el.querySelectorAll(".hit").forEach(h=>{ const i=+h.getAttribute("data-i");
+    h.addEventListener("click",e=>{ e.stopPropagation(); pinned= pinned===i? null : i; if(pinned===null) deactivate(); else activate(i); });
+    h.addEventListener("mouseenter",()=>{ if(pinned===null) activate(i); });
+    h.addEventListener("mouseleave",()=>{ if(pinned===null) deactivate(); }); });
+  svg.addEventListener("click",()=>{ pinned=null; deactivate(); });
 }
 
 function renderEfficiency(ms){
