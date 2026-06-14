@@ -16,10 +16,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0C1320; --surface:#131B2A; --surface2:#0F1726; --line:#1E2A3D;
+  --bg:#0C1320; --surface:#131C2C; --surface-hi:#1A2436; --surface-lo:#0F1726;
+  --line:#1F2A3D; --line-soft:#172230;
   --ink:#E9EEF5; --mut:#8B98AB; --faint:#5C687C;
-  --swim:#56B4D3; --bike:#E3B341; --run:#E2654F; --strength:#9A8FD0; --ok:#5FB87A;
-  --warn:#E3B341; --risk:#E2654F;
+  /* Grenfärger — används ENDAST för grendata */
+  --swim:#56B4D3; --bike:#E3B341; --run:#E2654F; --strength:#9A8FD0;
+  /* Funktionsfärger — frikopplade från grenfärgerna */
+  --ok:#5FB87A; --warn:#E0892F; --risk:#E2483A; --neutral:#3D5E80;
+  /* 8-punktsraster */
+  --s1:4px; --s2:8px; --s3:16px; --s4:24px; --s5:32px;
   --disp:"Barlow Condensed", "Arial Narrow", sans-serif;
   --body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --r:14px;
@@ -27,7 +32,7 @@
 *{box-sizing:border-box; margin:0; padding:0}
 html{color-scheme:dark}
 body{background:var(--bg); color:var(--ink); font-family:var(--body); font-size:15px; line-height:1.5;
-  -webkit-font-smoothing:antialiased; padding-bottom:72px}
+  -webkit-font-smoothing:antialiased; padding-bottom:calc(64px + env(safe-area-inset-bottom))}
 a{color:var(--swim)}
 button{font-family:var(--body); cursor:pointer}
 main{max-width:1060px; margin:0 auto; padding:0 16px}
@@ -51,7 +56,7 @@ header.hero{max-width:1060px; margin:0 auto; padding:22px 16px 6px; display:flex
 /* ---------- Timeline (signatur) ---------- */
 .timeline{position:relative; margin:24px 0 6px}
 .tl-band{display:flex; height:42px; border-radius:10px; overflow:hidden; border:1px solid var(--line)}
-.tl-seg{position:relative; display:flex; align-items:center; justify-content:center; background:var(--surface2);
+.tl-seg{position:relative; display:flex; align-items:center; justify-content:center; background:var(--surface-lo);
   border-right:1px solid var(--line); min-width:0; cursor:pointer; transition:background .15s}
 .tl-seg:last-child{border-right:0}
 .tl-seg span{font-family:var(--disp); font-weight:600; font-size:14px; letter-spacing:.08em; text-transform:uppercase;
@@ -82,26 +87,29 @@ header.hero{max-width:1060px; margin:0 auto; padding:22px 16px 6px; display:flex
 .tl-detail .meta{margin-top:2px}
 
 /* ---------- Sektioner & kort ---------- */
-section{margin:26px 0}
-h2{font-family:var(--disp); font-weight:600; font-size:18px; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--mut); margin-bottom:10px; display:flex; align-items:baseline; gap:10px}
+section{margin:var(--s4) 0}
+section:first-child{margin-top:var(--s2)}
+h2{font-family:var(--disp); font-weight:600; font-size:16px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--mut); margin-bottom:var(--s2); display:flex; align-items:baseline; gap:var(--s2)}
 h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transform:none; color:var(--faint)}
-.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px}
-.grid2{display:grid; gap:14px}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:var(--s3)}
+.card.hi{background:var(--surface-hi); border-color:#26344A}
+.card.lo{background:var(--surface-lo)}
+.grid2{display:grid; gap:var(--s3)}
 @media(min-width:880px){ .grid2{grid-template-columns:1fr 1fr} }
-.grid3{display:grid; gap:14px}
+.grid3{display:grid; gap:var(--s3)}
 @media(min-width:880px){ .grid3{grid-template-columns:1fr 1fr 1fr} }
 .cardtitle{font-weight:600; font-size:14px; margin-bottom:2px}
-.cardsub{font-size:12.5px; color:var(--faint); margin-bottom:10px}
+.cardsub{font-size:12px; color:var(--faint); margin-bottom:var(--s2)}
 
 /* ---------- Flaggor ---------- */
-#flags{display:flex; flex-direction:column; gap:8px; margin-top:14px}
-.flag{display:flex; gap:10px; align-items:flex-start; padding:11px 13px; border-radius:12px;
+#flags{display:flex; flex-direction:column; gap:var(--s2); margin-top:var(--s3)}
+.flag{display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border-radius:12px;
   background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--mut); font-size:14px}
-.flag.risk{border-left-color:var(--risk); border-left-width:4px; background:linear-gradient(90deg,rgba(226,101,79,.10),rgba(226,101,79,0) 60%)}
+.flag.risk{border-left-color:var(--risk); border-left-width:4px; background:linear-gradient(90deg,rgba(226,72,58,.10),rgba(226,72,58,0) 60%)}
 .flag.warn{border-left-color:var(--warn)}
 .flag.ok{border-left-color:var(--ok); color:var(--mut)}
-.flag .tag{font-family:var(--disp); font-weight:600; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; display:block; margin-bottom:1px}
+.flag .tag{font-family:var(--disp); font-weight:600; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; display:block; margin-bottom:2px}
 .flag.risk .tag{color:var(--risk)} .flag.warn .tag{color:var(--warn)} .flag.ok .tag{color:var(--ok)}
 .flag.risk b{font-size:14.5px}
 .flag b{display:block; font-size:13.5px}
@@ -181,11 +189,7 @@ svg{display:block; width:100%; height:auto}
   background:#231518; color:#E8B0A6; font-size:13.5px}
 #banner.show{display:block}
 
-/* ---------- Footer ---------- */
-footer{position:fixed; left:0; right:0; bottom:0; background:rgba(12,19,32,.92); backdrop-filter:blur(8px);
-  border-top:1px solid var(--line)}
-.footinner{max-width:1060px; margin:0 auto; padding:10px 16px; display:flex; align-items:center; gap:12px}
-#lastupd{font-size:12px; color:var(--faint); flex:1}
+/* ---------- Knappar ---------- */
 .btn{background:var(--surface); border:1px solid var(--line); color:var(--ink); border-radius:10px;
   padding:8px 14px; font-size:13.5px}
 .btn:hover{border-color:#2C3D58}
@@ -199,16 +203,34 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
   border-radius:16px; padding:22px}
 .panel h2{margin-bottom:14px}
 .panel label{display:block; font-size:13px; color:var(--mut); margin:12px 0 4px}
-.panel input{width:100%; background:var(--surface2); border:1px solid var(--line); color:var(--ink);
+.panel input{width:100%; background:var(--surface-lo); border:1px solid var(--line); color:var(--ink);
   border-radius:10px; padding:9px 11px; font-size:14px; font-family:var(--body)}
 .panel input:focus{outline:none; border-color:#3D6396}
 .panel .row{display:flex; gap:10px; margin-top:18px}
 .help{margin-top:18px; padding-top:14px; border-top:1px solid var(--line); font-size:13px; color:var(--mut)}
 .help h3{font-size:13px; color:var(--ink); margin:12px 0 4px}
-.help code{background:var(--surface2); border:1px solid var(--line); border-radius:6px; padding:1px 6px;
+.help code{background:var(--surface-lo); border:1px solid var(--line); border-radius:6px; padding:1px 6px;
   font-size:12px; color:#A8C7E0}
 .help ol{padding-left:18px} .help li{margin:4px 0}
 #onboard{margin-top:18px}
+
+/* ---------- Flikar ---------- */
+.tabpanel{animation:fade .18s ease}
+@keyframes fade{from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none}}
+@media (prefers-reduced-motion: reduce){ .tabpanel{animation:none} }
+.tabbar{position:fixed; left:0; right:0; bottom:0; z-index:40; display:flex;
+  background:rgba(13,19,30,.94); backdrop-filter:blur(12px); border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom)}
+.tabbar button{flex:1; background:none; border:0; padding:8px 4px 9px; display:flex; flex-direction:column;
+  align-items:center; gap:3px; color:var(--faint); position:relative; cursor:pointer}
+.tabbar button svg{width:22px; height:22px; display:block}
+.tabbar button .lbl{font-family:var(--disp); font-weight:600; font-size:11px; letter-spacing:.1em; text-transform:uppercase}
+.tabbar button.active{color:var(--ink)}
+.tabbar button.active::before{content:""; position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:26px; height:2px; border-radius:0 0 3px 3px; background:var(--swim)}
+.tabbar button .badge{position:absolute; top:5px; right:calc(50% - 18px); width:7px; height:7px; border-radius:50%;
+  background:var(--swim); box-shadow:0 0 0 2px var(--bg)}
+.lastupd-line{text-align:center; color:var(--faint); font-size:12px; margin:var(--s4) 0 0}
 
 /* ---------- Tävlingsdag ---------- */
 .raceleg{display:flex; align-items:baseline; gap:11px; padding:11px 0; border-top:1px solid var(--line)}
@@ -253,94 +275,107 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     <div class="racedate" id="cd-date"></div>
     <div class="racedate" id="cd-next"></div>
   </div>
-  <button class="iconbtn" id="btn-settings" title="Inställningar" aria-label="Inställningar">⚙</button>
+  <div style="display:flex; gap:8px; flex:0 0 auto">
+    <button class="iconbtn" id="btn-refresh" title="Uppdatera" aria-label="Uppdatera">↻</button>
+    <button class="iconbtn" id="btn-settings" title="Inställningar" aria-label="Inställningar">⚙</button>
+  </div>
 </header>
 
 <main>
   <div id="banner" role="alert"></div>
 
-  <section id="sec-oversikt">
-    <div class="timeline">
-      <div class="tl-band" id="tl-band" role="list" aria-label="Periodisering"></div>
-      <div class="tl-detail" id="tl-detail"></div>
-    </div>
-    <div id="flags" aria-live="polite"></div>
-  </section>
-
-  <section id="sec-race" hidden>
-    <h2>Tävlingsdag <small id="race-sub"></small></h2>
-    <div class="card" id="race-card"></div>
-  </section>
-
-  <div id="onboard"></div>
-
-  <section id="sec-vecka" hidden>
-    <h2>Veckan <small id="vecka-sub"></small></h2>
-    <div class="card">
-      <div class="weekstrip" id="weekstrip"></div>
-      <div id="weektable"></div>
-      <div style="display:flex;justify-content:flex-end;margin-top:12px">
-        <button class="btn" id="btn-report">Kopiera veckorapport</button>
+  <!-- ===== NU ===== -->
+  <div class="tabpanel" id="tab-nu" data-tab="nu">
+    <section id="sec-oversikt">
+      <div class="timeline">
+        <div class="tl-band" id="tl-band" role="list" aria-label="Periodisering"></div>
+        <div class="tl-detail" id="tl-detail"></div>
       </div>
-    </div>
-  </section>
+      <div id="flags" aria-live="polite"></div>
+    </section>
 
-  <section id="sec-delmal" hidden>
-    <h2>Delmål <small>plan vs utfall per gren</small></h2>
-    <div id="ms-list"></div>
-  </section>
+    <div id="onboard"></div>
 
-  <section id="sec-belastning" hidden>
-    <h2>Belastning <small>senaste 12 veckorna</small></h2>
-    <div class="grid2">
+    <section id="sec-vecka" hidden>
+      <h2>Veckan <small id="vecka-sub"></small></h2>
       <div class="card">
-        <div class="cardtitle">Veckovolym per gren</div>
-        <div class="cardsub">Timmar per vecka · skuggade fält = återhämtningsvecka enligt plan</div>
-        <div id="ch-volume"></div>
-        <div class="legend" id="lg-volume"></div>
+        <div class="weekstrip" id="weekstrip"></div>
+        <div id="weektable"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:var(--s3)">
+          <button class="btn" id="btn-report">Kopiera veckorapport</button>
+        </div>
       </div>
-      <div class="card">
-        <div class="cardtitle">Löpvolym & 110 %-tak</div>
-        <div class="cardsub">Km per vecka · linjen = 110 % av 3-veckors rullande snitt</div>
-        <div id="ch-run"></div>
-        <div class="legend"><span><i style="background:#3D5E80"></i>Inom tak</span><span><i style="background:var(--warn)"></i>Nära tak (&gt;90 %)</span><span><i style="background:var(--run)"></i>Över tak</span></div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="sec-intensitet" hidden>
-    <h2>Intensitet <small>rullande 14 dagar, tid i pulszoner</small></h2>
-    <div class="card" id="ch-intensity"></div>
-  </section>
+    <p class="lastupd-line" id="lastupd">Ingen data hämtad ännu</p>
+  </div>
 
-  <section id="sec-effektivitet" hidden>
-    <h2>Aerob effektivitet <small>samma puls, bättre output = progression</small></h2>
-    <div class="grid3">
-      <div class="card">
-        <div class="cardtitle" style="color:var(--bike)">Cykel</div>
-        <div class="cardsub">Snittwatt på pass med snittpuls 130–145 · ● = inomhus/wattkälla, ○ = utomhus</div>
-        <div id="ch-bike"></div>
+  <!-- ===== PLAN ===== -->
+  <div class="tabpanel" id="tab-plan" data-tab="plan" hidden>
+    <section id="sec-delmal">
+      <h2>Delmål <small>plan vs utfall per gren</small></h2>
+      <div id="ms-list"></div>
+    </section>
+  </div>
+
+  <!-- ===== FORM ===== -->
+  <div class="tabpanel" id="tab-form" data-tab="form" hidden>
+    <section id="sec-belastning">
+      <h2>Belastning <small>senaste 12 veckorna</small></h2>
+      <div class="grid2">
+        <div class="card">
+          <div class="cardtitle">Veckovolym per gren</div>
+          <div class="cardsub">Timmar per vecka · skuggade fält = återhämtningsvecka enligt plan</div>
+          <div id="ch-volume"></div>
+          <div class="legend" id="lg-volume"></div>
+        </div>
+        <div class="card">
+          <div class="cardtitle">Löpvolym & 110 %-tak</div>
+          <div class="cardsub">Km per vecka · linjen = 110 % av 3-veckors rullande snitt</div>
+          <div id="ch-run"></div>
+          <div class="legend"><span><i style="background:var(--neutral)"></i>Inom tak</span><span><i style="background:var(--warn)"></i>Nära tak (&gt;90 %)</span><span><i style="background:var(--risk)"></i>Över tak</span></div>
+        </div>
       </div>
-      <div class="card">
-        <div class="cardtitle" style="color:var(--run)">Löpning</div>
-        <div class="cardsub">Tempo på Z2-pass (puls 124–150, ≥30 min) · uppåt i grafen = snabbare</div>
-        <div id="ch-runeff"></div>
+    </section>
+
+    <section id="sec-intensitet">
+      <h2>Intensitet <small>rullande 14 dagar, tid i pulszoner</small></h2>
+      <div class="card" id="ch-intensity"></div>
+    </section>
+
+    <section id="sec-effektivitet">
+      <h2>Aerob effektivitet <small>samma puls, bättre output = progression</small></h2>
+      <div class="grid3">
+        <div class="card">
+          <div class="cardtitle" style="color:var(--bike)">Cykel</div>
+          <div class="cardsub">Snittwatt på pass med snittpuls 130–145 · ● = inomhus/wattkälla, ○ = utomhus</div>
+          <div id="ch-bike"></div>
+        </div>
+        <div class="card">
+          <div class="cardtitle" style="color:var(--run)">Löpning</div>
+          <div class="cardsub">Tempo på Z2-pass (puls 124–150, ≥30 min) · uppåt i grafen = snabbare</div>
+          <div id="ch-runeff"></div>
+        </div>
+        <div class="card">
+          <div class="cardtitle" style="color:var(--swim)">Simning</div>
+          <div class="cardsub">Tempo /100 m per simpass · staplar = längsta kontinuerliga distans (från delmål)</div>
+          <div id="ch-swim"></div>
+        </div>
       </div>
-      <div class="card">
-        <div class="cardtitle" style="color:var(--swim)">Simning</div>
-        <div class="cardsub">Tempo /100 m per simpass · staplar = längsta kontinuerliga distans (från delmål)</div>
-        <div id="ch-swim"></div>
-      </div>
-    </div>
-  </section>
+    </section>
+  </div>
+
+  <!-- ===== TÄVLING ===== -->
+  <div class="tabpanel" id="tab-tavling" data-tab="tavling" hidden>
+    <section id="sec-race">
+      <h2>Tävlingsdag <small id="race-sub"></small></h2>
+      <div class="card" id="race-card"></div>
+      <p class="empty" id="race-empty" hidden>Ingen tävlingsplan ännu. Lägg in en Race-flik i ditt Sheet (mål, split och pacingstrategi per gren) så visas tävlingsdagskortet här.</p>
+    </section>
+  </div>
 </main>
 
-<footer>
-  <div class="footinner">
-    <span id="lastupd">Ingen data hämtad ännu</span>
-    <button class="btn" id="btn-refresh">Uppdatera</button>
-  </div>
-</footer>
+<nav class="tabbar" id="tabbar" role="tablist"></nav>
 
 <div id="settings">
   <div class="panel">
@@ -740,7 +775,7 @@ function renderRun(weeks){
   const cols=[];
   weeks.forEach((w,i)=>{ const x=pad.l+i*bw+bw*0.2, wpx=bw*0.6;
     let fill="#3D5E80";
-    if(w.cap!=null){ if(w.runKm>w.cap) fill="#E2654F"; else if(w.runKm>0.9*w.cap) fill="#E3B341"; }
+    if(w.cap!=null){ if(w.runKm>w.cap) fill="#E2483A"; else if(w.runKm>0.9*w.cap) fill="#E0892F"; }
     if(w.runKm>0) s+='<rect x="'+x+'" y="'+y(w.runKm)+'" width="'+wpx+'" height="'+(pad.t+ih-y(w.runKm))+'" fill="'+fill+'" rx="1.5"/>';
     if(w.cap!=null) s+='<line x1="'+(pad.l+i*bw+bw*0.08)+'" x2="'+(pad.l+i*bw+bw*0.92)+'" y1="'+y(w.cap)+'" y2="'+y(w.cap)+'" stroke="#E9EEF5" stroke-width="1.6" stroke-dasharray="3 2"/>';
     if(i%2===(weeks.length-1)%2) s+=txt(pad.l+i*bw+bw/2,H-8,"v"+weekNo(w.start),"#5C687C",9,"middle");
@@ -963,19 +998,17 @@ function getRace(plan){
     return focus && (focus.includes(rn)||rn.includes(focus)); });
   return mine; }
 
+let raceImminent=false;
 function renderRace(plan){
-  const sec=$("#sec-race"), legs=getRace(plan);
-  if(!legs.length){ sec.hidden=true; return; }
-  sec.hidden=false;
+  const legs=getRace(plan), card=$("#race-card"), empty=$("#race-empty");
   const t=today(), r=plan.race, days=Math.ceil((r.date-t)/DAY);
-  // Placering: tävlingsvecka (≤2 dagar kvar, ej passerad) → överst. Annars längst ned i flödet.
-  const main=sec.parentElement, soon=days>=0&&days<=2;
-  sec.classList.toggle("imminent", soon);
-  if(soon){ if(sec.nextElementSibling!==$("#onboard")) main.insertBefore(sec, $("#onboard")); }
-  else { if(main.lastElementChild!==sec) main.appendChild(sec); }
+  raceImminent = days>=0 && days<=2 && legs.length>0;
+  if(!legs.length){ card.hidden=true; if(empty) empty.hidden=false; $("#race-sub").textContent=""; return; }
+  if(empty) empty.hidden=true; card.hidden=false;
+  card.classList.toggle("hi", raceImminent);
   $("#race-sub").textContent=r.name;
   const colorOf=(g)=>{ const k=normGren(g); return COLORS[k]||"#7E8AA0"; };
-  const isTotal=(g)=>/total|prognos|m[åa]l/i.test(g);
+  const isTotal=(g)=>/total|prognos|m[åa]l$/i.test(g);
   const isTrans=(g)=>/^t[12]|växling|transition/i.test(g);
   let body='<div class="racehero"><div class="cd">'+esc(r.name)+' · '+r.date.toLocaleDateString("sv-SE",{day:"numeric",month:"long"})+
     '</div><div class="cd"><b>'+(days>=0?days:"✓")+'</b> '+(days===1?"dag":"dagar")+' kvar</div></div>';
@@ -985,7 +1018,33 @@ function renderRace(plan){
     body+='<div class="raceleg'+(total?" total":"")+'">'+dot+
       '<span class="lg"><b>'+esc(l.gren)+'</b>'+(l.strategi?'<span class="strat">'+esc(l.strategi)+'</span>':'')+'</span>'+
       '<span class="num">'+(l.mal?'<div class="mal" style="color:var(--mut)">'+esc(l.mal)+'</div>':'')+(l.split?'<div class="split">'+esc(l.split)+'</div>':'')+'</span></div>'; }
-  $("#race-card").innerHTML=body;
+  card.innerHTML=body;
+}
+
+/* ============ Flikar ============ */
+const TABS=[
+  {id:"nu",   lbl:"Nu",      icon:'<path d="M3 12h4l2 5 4-11 2 6h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'},
+  {id:"plan", lbl:"Plan",    icon:'<path d="M6 3v18M6 4h11l-2 3 2 3H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'},
+  {id:"form", lbl:"Form",    icon:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'},
+  {id:"tavling", lbl:"Tävling", icon:'<circle cx="12" cy="13" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 13V9M9 2h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}
+];
+let activeTab="nu", tabInitialized=false;
+function buildTabbar(){
+  const bar=$("#tabbar");
+  bar.innerHTML=TABS.map(tb=>'<button data-tab="'+tb.id+'" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true">'+tb.icon+'</svg><span class="lbl">'+tb.lbl+'</span></button>').join("");
+  bar.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>switchTab(b.getAttribute("data-tab"))));
+}
+function switchTab(id){
+  activeTab=id;
+  document.querySelectorAll(".tabpanel").forEach(p=>p.hidden = p.getAttribute("data-tab")!==id);
+  $("#tabbar").querySelectorAll("button").forEach(b=>b.classList.toggle("active", b.getAttribute("data-tab")===id));
+  window.scrollTo({top:0, behavior:"auto"});
+}
+function updateTabBadges(){
+  const btn=$("#tabbar").querySelector('button[data-tab="tavling"]');
+  if(!btn) return;
+  btn.querySelector(".badge")?.remove();
+  if(raceImminent){ const d=document.createElement("span"); d.className="badge"; btn.appendChild(d); }
 }
 
 function renderAll(ts){
@@ -1001,7 +1060,9 @@ function renderAll(ts){
   renderIntensity(inten, plan);
   renderEfficiency(ms);
   renderWeek(weekSummary());
-  ["#sec-vecka","#sec-delmal","#sec-belastning","#sec-intensitet","#sec-effektivitet"].forEach(s=>$(s).hidden=false);
+  $("#sec-vecka").hidden=false;
+  updateTabBadges();
+  if(!tabInitialized){ tabInitialized=true; if(raceImminent) switchTab("tavling"); }
   $("#onboard").innerHTML="";
   if(ts) $("#lastupd").textContent="Uppdaterad "+new Date(ts).toLocaleString("sv-SE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 }
@@ -1082,6 +1143,8 @@ function showOnboarding(){
 
 function boot(){
   renderBrand();
+  buildTabbar();
+  switchTab("nu");
   hideSplash();
   $("#btn-settings").addEventListener("click",openSettings);
   $("#btn-close").addEventListener("click",closeSettings);
