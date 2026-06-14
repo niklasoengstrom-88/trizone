@@ -226,6 +226,8 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 .racehero{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:6px}
 .racehero .cd{font-family:var(--disp); font-weight:700; font-size:15px; color:var(--ink)}
 .racehero .cd b{font-size:22px}
+#sec-race.imminent .card{border-color:#2C4F77; box-shadow:0 0 0 1px #2C4F77, 0 8px 28px rgba(0,0,0,.35)}
+#sec-race.imminent h2 small{color:var(--swim)}
 
 /* ---------- Kallstarts-splash ---------- */
 #splash{position:fixed; inset:0; z-index:100; background:radial-gradient(120% 90% at 50% 35%, #15243B 0%, #0C1320 70%);
@@ -966,6 +968,11 @@ function renderRace(plan){
   if(!legs.length){ sec.hidden=true; return; }
   sec.hidden=false;
   const t=today(), r=plan.race, days=Math.ceil((r.date-t)/DAY);
+  // Placering: tävlingsvecka (≤2 dagar kvar, ej passerad) → överst. Annars längst ned i flödet.
+  const main=sec.parentElement, soon=days>=0&&days<=2;
+  sec.classList.toggle("imminent", soon);
+  if(soon){ if(sec.nextElementSibling!==$("#onboard")) main.insertBefore(sec, $("#onboard")); }
+  else { if(main.lastElementChild!==sec) main.appendChild(sec); }
   $("#race-sub").textContent=r.name;
   const colorOf=(g)=>{ const k=normGren(g); return COLORS[k]||"#7E8AA0"; };
   const isTotal=(g)=>/total|prognos|m[åa]l/i.test(g);
@@ -1012,15 +1019,27 @@ function emblemSVG(){
   return '<svg viewBox="0 0 100 100" aria-hidden="true">'+p+'</svg>';
 }
 // Ordmärke: "TRIZON" + tre staplar som E (≡). textLength låser bredden så E:t hamnar rätt i alla webbläsare.
+const WM_GAP=0; // finjustering av N→E-glappet (px i viewBox-skala), nudgas vid behov
 function wordmarkSVG(h){
-  const fs=34, tl=158;          // "TRIZON" luftig tracking (spacing, ej glyfsträckning)
-  const ex=tl+7, ew=20, t=4.4;  // E-staplar: matchar tracking-gapet, bokstavsvikt
-  // Versalbox 9.7–34. Staplarna sitter en aning inom den (10.7–32.5) så E:t inte känns större.
-  const tops=[10.7, 19.4, 28.1];
-  const bars=tops.map(y=>'<rect x="'+ex+'" y="'+y.toFixed(1)+'" width="'+ew+'" height="'+t+'" rx="1.4" fill="#E9EEF5"/>').join("");
-  return '<svg viewBox="0 0 '+(ex+ew+2)+' 44" height="'+h+'" role="img" aria-label="TRIZONE">'+
-    '<text x="0" y="34" textLength="'+tl+'" lengthAdjust="spacing" font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="'+fs+'" fill="#E9EEF5">TRIZON</text>'+
-    bars+'</svg>';
+  const fs=34, ls=6, ew=20, t=4.4;   // luftig tracking via letter-spacing (jämn, ej sträckt)
+  const tops=[10.7,19.4,28.1];        // E-staplar centrerade i versalboxen
+  const bars=tops.map(y=>'<rect y="'+y.toFixed(1)+'" width="'+ew+'" height="'+t+'" rx="1.4" fill="#E9EEF5"/>').join("");
+  return '<svg class="wm" viewBox="0 0 240 44" height="'+h+'" preserveAspectRatio="xMinYMid meet" role="img" aria-label="TRIZONE" data-ls="'+ls+'" data-ew="'+ew+'">'+
+    '<text class="wm-t" x="0" y="34" letter-spacing="'+ls+'" font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="'+fs+'" fill="#E9EEF5">TRIZON</text>'+
+    '<g class="wm-e">'+bars+'</g></svg>';
+}
+// Mät TRIZON:s verkliga bredd när fonten laddat och placera E exakt ett tracking-steg efter N.
+function adjustWordmarks(){
+  document.querySelectorAll("svg.wm").forEach(svg=>{
+    const txt=svg.querySelector(".wm-t"), g=svg.querySelector(".wm-e");
+    if(!txt||!g) return;
+    let w; try{ w=txt.getComputedTextLength(); }catch(e){ w=150; }
+    if(!w) return;
+    const ls=+svg.getAttribute("data-ls"), ew=+svg.getAttribute("data-ew");
+    const ex=w+WM_GAP;                 // getComputedTextLength inkluderar trailing tracking i Chrome
+    g.setAttribute("transform","translate("+ex+",0)");
+    svg.setAttribute("viewBox","0 0 "+(ex+ew+2)+" 44");
+  });
 }
 function renderBrand(){
   const br=$("#brandrow");
@@ -1030,6 +1049,8 @@ function renderBrand(){
     sp.innerHTML='<div style="display:flex;align-items:center;gap:14px">'+
       '<div style="width:min(22vw,96px)">'+emblemSVG()+'</div>'+wordmarkSVG(40)+'</div>'+
       '<div class="sub"><b style="color:var(--swim)">SWIM</b> · <b style="color:var(--bike)">BIKE</b> · <b style="color:var(--run)">RUN</b></div>'; }
+  adjustWordmarks();
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(adjustWordmarks);
 }
 function hideSplash(){ const sp=$("#splash"); if(!sp) return;
   setTimeout(()=>{ sp.classList.add("hide"); setTimeout(()=>sp.remove(),500); }, 350); }
