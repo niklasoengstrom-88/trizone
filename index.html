@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="TRIZONE">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>TRIZONE — mot Holmsjö</title>
+<title>TRIZONE · Triathlonöversikt</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -39,9 +39,11 @@ main{max-width:1060px; margin:0 auto; padding:0 16px}
 ::selection{background:#2A3B57}
 
 /* ---------- Header / hero ---------- */
-header.hero{max-width:1060px; margin:0 auto; padding:22px 16px 6px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px}
-.brandrow{display:flex; align-items:center; gap:10px; margin-bottom:10px}
+header.hero{max-width:1060px; margin:0 auto; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px}
+.hero-actions{display:flex; gap:8px; flex:0 0 auto}
+.brandrow{display:flex; align-items:center; gap:10px}
 .brandrow svg{height:30px; width:auto; display:block}
+.herohead{margin-bottom:var(--s4)}
 .eyebrow{font-family:var(--disp); font-weight:600; letter-spacing:.18em; text-transform:uppercase; font-size:13px; color:var(--mut)}
 .hero h1{font-family:var(--disp); font-weight:700; font-size:34px; line-height:1.05; letter-spacing:.01em}
 .countdown{display:flex; align-items:baseline; gap:8px; margin-top:2px}
@@ -51,6 +53,10 @@ header.hero{max-width:1060px; margin:0 auto; padding:22px 16px 6px; display:flex
 .racedate{color:var(--faint); font-size:13px; margin-top:2px}
 .iconbtn{background:var(--surface); border:1px solid var(--line); color:var(--mut); border-radius:10px;
   width:40px; height:40px; font-size:18px; flex:0 0 auto}
+#btn-refresh{font-size:21px}
+#btn-refresh.spin{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){ #btn-refresh.spin{animation:none} }
 .iconbtn:hover{color:var(--ink); border-color:#2C3D58}
 
 /* ---------- Timeline (signatur) ---------- */
@@ -88,7 +94,8 @@ header.hero{max-width:1060px; margin:0 auto; padding:22px 16px 6px; display:flex
 
 /* ---------- Sektioner & kort ---------- */
 section{margin:var(--s4) 0}
-section:first-child{margin-top:var(--s2)}
+.tabpanel > *:first-child{margin-top:var(--s3)}
+#sec-oversikt{margin-top:0}
 h2{font-family:var(--disp); font-weight:600; font-size:16px; letter-spacing:.16em; text-transform:uppercase;
   color:var(--mut); margin-bottom:var(--s2); display:flex; align-items:baseline; gap:var(--s2)}
 h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transform:none; color:var(--faint)}
@@ -118,9 +125,15 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 /* ---------- Delmål ---------- */
 .msgroup{margin-bottom:14px}
 .msgroup h3{font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin:0 2px 6px}
-.mshead{cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:6px}
-.mshead:hover{color:var(--mut)}
-.mshead .chev{font-size:10px}
+.mshead{cursor:pointer; user-select:none; display:flex; align-items:center; justify-content:space-between;
+  width:100%; padding:12px 14px; margin:0; background:var(--surface-lo); border:1px solid var(--line);
+  border-radius:12px; color:var(--mut); font-family:var(--disp); font-weight:600; font-size:13px;
+  letter-spacing:.12em; text-transform:uppercase}
+.mshead:hover{border-color:#2C3D58; color:var(--ink)}
+.mshead .chev{font-size:15px; transition:transform .15s; color:var(--faint)}
+.mshead[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.mshead[aria-expanded="true"]{color:var(--ink); border-radius:12px 12px 0 0; border-bottom-color:transparent}
+#ms-done{border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px; padding:6px 10px}
 .msprog{display:flex; align-items:center; gap:10px; margin:2px 2px 12px; font-size:12px; color:var(--faint)}
 .msprog .bar{flex:1; height:4px; border-radius:99px; background:#1A2436; overflow:hidden}
 .msprog .bar i{display:block; height:100%; background:var(--ok); border-radius:99px}
@@ -267,15 +280,8 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 <div id="splash" aria-hidden="true"></div>
 
 <header class="hero">
-  <div>
-    <div class="brandrow" id="brandrow"></div>
-    <div class="eyebrow" id="eyebrow">Olympisk distans</div>
-    <h1 id="racename">Mot Holmsjö</h1>
-    <div class="countdown"><span class="n" id="cd-n">–</span><span class="u" id="cd-u">dagar kvar</span></div>
-    <div class="racedate" id="cd-date"></div>
-    <div class="racedate" id="cd-next"></div>
-  </div>
-  <div style="display:flex; gap:8px; flex:0 0 auto">
+  <div class="brandrow" id="brandrow"></div>
+  <div class="hero-actions">
     <button class="iconbtn" id="btn-refresh" title="Uppdatera" aria-label="Uppdatera">↻</button>
     <button class="iconbtn" id="btn-settings" title="Inställningar" aria-label="Inställningar">⚙</button>
   </div>
@@ -286,6 +292,14 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 
   <!-- ===== NU ===== -->
   <div class="tabpanel" id="tab-nu" data-tab="nu">
+    <div class="herohead">
+      <div class="eyebrow" id="eyebrow">Olympisk distans</div>
+      <h1 id="racename">Mot Holmsjö</h1>
+      <div class="countdown"><span class="n" id="cd-n">–</span><span class="u" id="cd-u">dagar kvar</span></div>
+      <div class="racedate" id="cd-date"></div>
+      <div class="racedate" id="cd-next"></div>
+    </div>
+
     <section id="sec-oversikt">
       <div class="timeline">
         <div class="tl-band" id="tl-band" role="list" aria-label="Periodisering"></div>
@@ -506,7 +520,7 @@ async function fetchIntervals(path){
 
 async function refreshAll(){
   if(!cfg) return;
-  $("#btn-refresh").disabled=true; $("#btn-refresh").textContent="Hämtar…";
+  $("#btn-refresh").disabled=true; $("#btn-refresh").classList.add("spin");
   const t=today();
   const tasks={
     activities: fetchIntervals("/activities?oldest="+iso(addDays(t,-120))+"&newest="+iso(addDays(t,1))),
@@ -531,7 +545,7 @@ async function refreshAll(){
   if(badTabs.length) msgs.push("Länken för "+badTabs.join(" och ")+" gav ingen läsbar CSV. Kontrollera att den kommer från Arkiv → Dela → Publicera på webben (flik + format CSV) i ett Google Kalkylark — inte en vanlig fil- eller delningslänk.");
   if(msgs.length) showBanner(msgs.join(" — ")); else hideBanner();
   localStorage.setItem(CACHE_KEY, JSON.stringify({ts:Date.now(), data}));
-  $("#btn-refresh").disabled=false; $("#btn-refresh").textContent="Uppdatera";
+  $("#btn-refresh").disabled=false; $("#btn-refresh").classList.remove("spin");
   renderAll(Date.now());
 }
 function showBanner(msg){ const b=$("#banner"); b.textContent=msg; b.classList.add("show"); }
@@ -726,7 +740,7 @@ function renderMilestones(ms){
     pill(m)+(m.note? '<span class="note">'+esc(m.note)+'</span>':'')+'</div>';
   const grp=(title,arr)=>arr.length? '<div class="msgroup"><h3>'+title+'</h3>'+arr.map(row).join("")+'</div>' : "";
   const prog= ms.length? '<div class="msprog"><div class="bar"><i style="width:'+Math.round(100*g3.length/ms.length)+'%"></i></div><span>'+g3.length+' av '+ms.length+' klara · '+(ms.length-g3.length)+' kvar</span></div>' : "";
-  const done= g3.length? '<div class="msgroup"><h3 class="mshead" id="ms-done-h" role="button" tabindex="0" aria-expanded="'+msDoneOpen+'">Avklarade · '+g3.length+' <span class="chev">'+(msDoneOpen?"▾":"▸")+'</span></h3><div id="ms-done"'+(msDoneOpen?"":" hidden")+'>'+g3.map(row).join("")+'</div></div>' : "";
+  const done= g3.length? '<div class="msgroup"><div class="mshead" id="ms-done-h" role="button" tabindex="0" aria-expanded="'+msDoneOpen+'"><span>Avklarade · '+g3.length+'</span><span class="chev">›</span></div><div id="ms-done"'+(msDoneOpen?"":" hidden")+'>'+g3.map(row).join("")+'</div></div>' : "";
   c.innerHTML=prog+grp("Nu — inom 14 dagar",g1)+grp("Senare",g2)+done;
   const dh=$("#ms-done-h");
   if(dh){ const tgd=()=>{ msDoneOpen=!msDoneOpen; renderMilestones(ms); };
