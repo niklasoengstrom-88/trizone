@@ -198,6 +198,10 @@ svg{display:block; width:100%; height:auto}
 
 /* ---------- Tomt läge / fel ---------- */
 .empty{color:var(--faint); font-size:13.5px; padding:8px 2px}
+.estate{display:flex; flex-direction:column; align-items:center; text-align:center; gap:5px; padding:26px 16px; color:var(--faint)}
+.estate svg{width:30px; height:30px; opacity:.55; margin-bottom:2px}
+.estate .et{color:var(--mut); font-size:13.5px; font-weight:500}
+.estate .el{font-size:12.5px; max-width:270px; line-height:1.45}
 #banner{display:none; margin-top:14px; padding:11px 13px; border-radius:12px; border:1px solid #5C322C;
   background:#231518; color:#E8B0A6; font-size:13.5px}
 #banner.show{display:block}
@@ -384,7 +388,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     <section id="sec-race">
       <h2>Tävlingsdag <small id="race-sub"></small></h2>
       <div class="card" id="race-card"></div>
-      <p class="empty" id="race-empty" hidden>Ingen tävlingsplan ännu. Lägg in en Race-flik i ditt Sheet (mål, split och pacingstrategi per gren) så visas tävlingsdagskortet här.</p>
+      <div id="race-empty" hidden></div>
     </section>
   </div>
 </main>
@@ -632,6 +636,17 @@ function computeFlags(weeks, plan, inten, ms){
   return flags; }
 
 /* ============ SVG-hjälpare ============ */
+const EICON={
+  trend:'<path d="M4 19h16M6 16l3.5-4.5 3 2.5L19 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="16" r="1.3" fill="currentColor"/><circle cx="12.5" cy="14" r="1.3" fill="currentColor"/><circle cx="19" cy="7" r="1.3" fill="currentColor"/>',
+  bars:'<path d="M4 20V12M10 20V6M16 20v-5M22 20H2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  zones:'<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 12L12 5M12 12l6 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+  flag:'<path d="M6 21V4M6 5h11l-2 3 2 3H6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  wave:'<path d="M3 9c2 0 2 2 4.5 2S10 9 12 9s2 2 4.5 2S19 9 21 9M3 14c2 0 2 2 4.5 2S10 14 12 14s2 2 4.5 2S19 14 21 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'
+};
+function emptyState(title, line, icon){
+  return '<div class="estate"><svg viewBox="0 0 24 24" aria-hidden="true">'+(EICON[icon]||EICON.trend)+'</svg>'+
+    '<div class="et">'+esc(title)+'</div><div class="el">'+esc(line)+'</div></div>';
+}
 function svgOpen(w,h){ return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet" role="img">'; }
 function txt(x,y,s,fill,size,anchor,bold){ return '<text x="'+x+'" y="'+y+'" fill="'+(fill||"#8B98AB")+'" font-size="'+(size||10)+'" text-anchor="'+(anchor||"start")+'"'+(bold?' font-weight="600"':'')+' font-family="IBM Plex Sans, sans-serif">'+esc(s)+'</text>'; }
 
@@ -725,7 +740,7 @@ function renderFlags(flags){
 let msDoneOpen=false;
 function renderMilestones(ms){
   const c=$("#ms-list");
-  if(!ms.length){ c.innerHTML='<div class="empty">Inga delmål ännu — lägg rader i fliken Delmal i ditt Sheet.</div>'; return; }
+  if(!ms.length){ c.innerHTML=emptyState("Inga delmål än","Lägg rader i Delmal-fliken i ditt Sheet — beskrivning, plandatum och status per gren.","flag"); return; }
   const t=today(), soon=addDays(t,14);
   const open=ms.filter(m=>m.status!=="done");
   const g1=open.filter(m=>m.plan&&m.plan<=soon).sort((a,b)=>a.plan-b.plan);
@@ -752,58 +767,68 @@ function renderMilestones(ms){
 }
 
 function renderVolume(weeks, plan){
-  const W=460,H=190,pad={l:30,r:6,t:10,b:24}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  const el=$("#ch-volume");
+  const anyData=weeks.some(w=>Object.values(w.vol).reduce((a,b)=>a+b,0)>0.017);
+  if(!anyData){ el.innerHTML=emptyState("Ingen volym än","Så fort dina pass synkar från intervals.icu ritas veckovolymen per gren här.","bars"); $("#lg-volume").innerHTML=""; return; }
+  const W=460,H=200,pad={l:32,r:8,t:16,b:26}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
   const max=Math.max(1,...weeks.map(w=>Object.values(w.vol).reduce((a,b)=>a+b,0)));
   const bw=iw/weeks.length;
   let s=svgOpen(W,H);
   weeks.forEach((w,i)=>{ const isRest=plan.rests.some(r=>w.start>=monday(r.start)&&w.start<=r.end);
-    if(isRest) s+='<rect x="'+(pad.l+i*bw)+'" y="'+pad.t+'" width="'+bw+'" height="'+ih+'" fill="#FFFFFF" opacity="0.045"/>'; });
+    if(isRest) s+='<rect x="'+(pad.l+i*bw)+'" y="'+pad.t+'" width="'+bw+'" height="'+ih+'" fill="#FFFFFF" opacity="0.035"/>'; });
   for(const gy of [0.5,1]){ const y=pad.t+ih-ih*gy;
-    s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+y+'" y2="'+y+'" stroke="#1E2A3D" stroke-width="1"/>';
-    s+=txt(pad.l-4, y+3, n1(max*gy)+"h", "#5C687C", 9, "end"); }
+    s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+y+'" y2="'+y+'" stroke="#19232F" stroke-width="1"/>';
+    s+=txt(pad.l-6, y+3, n1(max*gy)+" h", "#5C687C", 9, "end"); }
+  s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+(pad.t+ih)+'" y2="'+(pad.t+ih)+'" stroke="#243140" stroke-width="1"/>';
   const order=["swim","bike","run","strength","other"];
   const cols=[];
-  weeks.forEach((w,i)=>{ let y=pad.t+ih; const x=pad.l+i*bw+bw*0.18, wpx=bw*0.64;
-    for(const k of order){ const v=w.vol[k]; if(v<=0) continue;
-      const h=ih*v/max; y-=h;
-      s+='<rect x="'+x+'" y="'+y+'" width="'+wpx+'" height="'+h+'" fill="'+COLORS[k]+'" rx="1.5"/>'; }
+  weeks.forEach((w,i)=>{ let y=pad.t+ih; const x=pad.l+i*bw+bw*0.22, wpx=bw*0.56;
+    const segs=order.filter(k=>w.vol[k]>0);
+    segs.forEach((k,si)=>{ const v=w.vol[k]; let h=ih*v/max; if(si>0) h-=1; if(h<1) h=Math.max(h,0.8);
+      y-=h;
+      const top = si===segs.length-1;
+      s+='<rect x="'+x+'" y="'+y+'" width="'+wpx+'" height="'+h+'" fill="'+COLORS[k]+'" rx="'+(top?2:0)+'"/>';
+      y-=1; });
     if(i%2===(weeks.length-1)%2) s+=txt(pad.l+i*bw+bw/2, H-8, "v"+weekNo(w.start), "#5C687C", 9, "middle");
     const tot=order.reduce((a,k)=>a+w.vol[k],0);
     const parts=order.filter(k=>w.vol[k]>0.017).map(k=>SPORT_LABEL[k]+" "+hm(w.vol[k]));
     cols.push({cx:pad.l+i*bw+bw/2, tip:'<span class="h">v'+weekNo(w.start)+' · totalt '+hm(tot)+'</span><br>'+(parts.join(" · ")||"inga pass")}); });
   weeks.forEach((w,i)=>{ s+='<rect class="hit" data-i="'+i+'" x="'+(pad.l+i*bw)+'" y="'+pad.t+'" width="'+bw+'" height="'+ih+'" fill="transparent"/>'; });
   s+="</svg>";
-  $("#ch-volume").innerHTML=s;
-  barTips($("#ch-volume"), W, cols);
+  el.innerHTML=s;
+  barTips(el, W, cols);
   $("#lg-volume").innerHTML=["swim","bike","run","strength"].map(k=>'<span><i style="background:'+COLORS[k]+'"></i>'+SPORT_LABEL[k]+'</span>').join("");
 }
 
 function renderRun(weeks){
-  const W=460,H=190,pad={l:34,r:6,t:12,b:24}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
-  const max=Math.max(5,...weeks.map(w=>Math.max(w.runKm,w.cap||0)))*1.1;
+  const el=$("#ch-run");
+  if(!weeks.some(w=>w.runKm>0)){ el.innerHTML=emptyState("Inga löppass än","När du loggat löpning visas veckovolymen mot 110 %-taket här — din viktigaste graf givet fothistoriken.","trend"); return; }
+  const W=460,H=200,pad={l:36,r:8,t:16,b:26}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  const max=Math.max(5,...weeks.map(w=>Math.max(w.runKm,w.cap||0)))*1.12;
   const bw=iw/weeks.length, y=(v)=>pad.t+ih-ih*v/max;
   let s=svgOpen(W,H);
   for(const gv of [Math.round(max/2), Math.round(max)]){
-    s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+y(gv)+'" y2="'+y(gv)+'" stroke="#1E2A3D"/>';
-    s+=txt(pad.l-4,y(gv)+3,gv+" km","#5C687C",9,"end"); }
+    s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+y(gv)+'" y2="'+y(gv)+'" stroke="#19232F"/>';
+    s+=txt(pad.l-6,y(gv)+3,gv+" km","#5C687C",9,"end"); }
+  s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+(pad.t+ih)+'" y2="'+(pad.t+ih)+'" stroke="#243140"/>';
   const cols=[];
-  weeks.forEach((w,i)=>{ const x=pad.l+i*bw+bw*0.2, wpx=bw*0.6;
+  weeks.forEach((w,i)=>{ const x=pad.l+i*bw+bw*0.24, wpx=bw*0.52;
     let fill="#3D5E80";
     if(w.cap!=null){ if(w.runKm>w.cap) fill="#E2483A"; else if(w.runKm>0.9*w.cap) fill="#E0892F"; }
-    if(w.runKm>0) s+='<rect x="'+x+'" y="'+y(w.runKm)+'" width="'+wpx+'" height="'+(pad.t+ih-y(w.runKm))+'" fill="'+fill+'" rx="1.5"/>';
-    if(w.cap!=null) s+='<line x1="'+(pad.l+i*bw+bw*0.08)+'" x2="'+(pad.l+i*bw+bw*0.92)+'" y1="'+y(w.cap)+'" y2="'+y(w.cap)+'" stroke="#E9EEF5" stroke-width="1.6" stroke-dasharray="3 2"/>';
+    if(w.runKm>0) s+='<rect x="'+x+'" y="'+y(w.runKm)+'" width="'+wpx+'" height="'+(pad.t+ih-y(w.runKm))+'" fill="'+fill+'" rx="2"/>';
+    if(w.cap!=null) s+='<line x1="'+(pad.l+i*bw+bw*0.1)+'" x2="'+(pad.l+i*bw+bw*0.9)+'" y1="'+y(w.cap)+'" y2="'+y(w.cap)+'" stroke="#E9EEF5" stroke-width="1.5" stroke-dasharray="3 2" opacity="0.8"/>';
     if(i%2===(weeks.length-1)%2) s+=txt(pad.l+i*bw+bw/2,H-8,"v"+weekNo(w.start),"#5C687C",9,"middle");
     const status = w.cap==null? "" : w.runKm>w.cap? " · över tak" : w.runKm>0.9*w.cap? " · nära tak" : "";
     cols.push({cx:pad.l+i*bw+bw/2, tip:'<span class="h">v'+weekNo(w.start)+status+'</span><br>'+n1(w.runKm)+' km'+(w.cap!=null? ' · tak '+n1(w.cap)+' km':'')}); });
   weeks.forEach((w,i)=>{ s+='<rect class="hit" data-i="'+i+'" x="'+(pad.l+i*bw)+'" y="'+pad.t+'" width="'+bw+'" height="'+ih+'" fill="transparent"/>'; });
   s+="</svg>";
-  $("#ch-run").innerHTML=s;
-  barTips($("#ch-run"), W, cols);
+  el.innerHTML=s;
+  barTips(el, W, cols);
 }
 
 function renderIntensity(inten, plan){
   const c=$("#ch-intensity");
-  if(!inten){ c.innerHTML='<div class="empty">Inga pass med pulszondata senaste 14 dagarna.</div>'; return; }
+  if(!inten){ c.innerHTML=emptyState("Ingen zondata än","Bär bröstbandet på dina kvalitetspass de närmaste två veckorna så visas fördelningen lågt/hårt här.","zones"); return; }
   const ph=currentPhase(plan), tgt=ph&&ph.target!=null? ph.target : null;
   const lo=Math.round(inten.loPct), hi=100-lo;
   c.innerHTML='<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">'+
@@ -835,8 +860,8 @@ function barTips(el, W, cols){
   if(svg) svg.addEventListener("click",()=>{ pinned=null; deactivate(); }); }
 
 function scatter(el, pts, opts){
-  const W=320,H=150,pad={l:38,r:8,t:10,b:20}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
-  if(pts.length<2){ el.classList.remove("chart"); el.innerHTML='<div class="empty">'+(opts.empty||"För få datapunkter ännu.")+'</div>'; return; }
+  const W=320,H=150,pad={l:38,r:8,t:12,b:22}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  if(pts.length<2){ el.classList.remove("chart"); el.innerHTML=emptyState(opts.emptyTitle||"Ingen trend än", opts.empty||"För få datapunkter ännu.", opts.emptyIcon||"trend"); return; }
   const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
   const x0=Math.min(...xs), x1=Math.max(...xs)||x0+1;
   let y0=Math.min(...ys), y1=Math.max(...ys); const padY=(y1-y0)*0.15||1; y0-=padY; y1+=padY;
@@ -844,8 +869,8 @@ function scatter(el, pts, opts){
   const Y=(v)=>opts.invert? pad.t+ih*(v-y0)/(y1-y0) : pad.t+ih-ih*(v-y0)/(y1-y0);
   let s=svgOpen(W,H);
   for(const f of [0.25,0.75]){ const v=y0+(y1-y0)*f;
-    s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="#1E2A3D"/>';
-    s+=txt(pad.l-4,Y(v)+3,opts.yfmt(v),"#5C687C",9,"end"); }
+    s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="#19232F"/>';
+    s+=txt(pad.l-6,Y(v)+3,opts.yfmt(v),"#5C687C",9,"end"); }
   const reg=linreg(pts);
   if(reg) s+='<line x1="'+X(x0)+'" y1="'+Y(reg.a*x0+reg.b)+'" x2="'+X(x1)+'" y2="'+Y(reg.a*x1+reg.b)+'" stroke="'+opts.color+'" stroke-width="1.5" opacity="0.55" stroke-dasharray="4 3"/>';
   const pos=[];
@@ -888,13 +913,15 @@ function renderEfficiency(ms){
       return (d&&hr>=130&&hr<=145&&w>50)? {x:+d, y:w, hollow:!(a.trainer||/virtual/i.test(a.type||"")),
         tip:dfmt(d)+" · "+Math.round(w)+" W @ "+Math.round(hr)+" bpm"} : null; }).filter(Boolean);
   scatter($("#ch-bike"), bike, {color:COLORS.bike, yfmt:v=>Math.round(v)+" W",
-    empty:"Inga Z2-pass med wattdata ännu (spinning eller wattpedal)."});
+    emptyTitle:"Ingen wattbaserad trend än", emptyIcon:"trend",
+    empty:"Kör ett par Z2-pass på spinningcykeln (eller med wattpedal) så ritas watt-vid-puls-trenden här."});
   const run=acts.filter(a=>sportOf(a)==="run").map(a=>{ const hr=actHR(a), d=actDate(a);
       if(!d||!(hr>=124&&hr<=150)||(a.moving_time||0)<1800||!(a.distance>0)) return null;
       const pace=a.moving_time/(a.distance/1000);
       return {x:+d, y:pace, tip:dfmt(d)+" · "+paceFmt(pace)+"/km @ "+Math.round(hr)+" bpm"}; }).filter(Boolean);
   scatter($("#ch-runeff"), run, {color:COLORS.run, invert:true, yfmt:v=>paceFmt(v),
-    empty:"Inga Z2-löppass ≥30 min ännu."});
+    emptyTitle:"Ingen löptrend än", emptyIcon:"trend",
+    empty:"Två Z2-löppass på minst 30 min behövs innan tempo-vid-puls börjar säga något."});
   const swimEl=$("#ch-swim");
   const swim=acts.filter(a=>sportOf(a)==="swim"&&a.distance>=400&&a.moving_time>0).map(a=>{ const d=actDate(a);
       const pace=100*a.moving_time/a.distance;
@@ -920,7 +947,8 @@ function renderEfficiency(ms){
       b.addEventListener("mouseleave",()=>{ if(pinned===null) deact(); }); });
     sbWrap.addEventListener("click",()=>{ pinned=null; deact(); }); }
   scatter($("#ch-swim-pace"), swim, {color:COLORS.swim, invert:true, yfmt:v=>paceFmt(v),
-    empty:"Inga simpass i datan ännu."});
+    emptyTitle:"Ingen simtrend än", emptyIcon:"wave",
+    empty:"Ladda upp ett par pool-pass (TCX) så ritas tempo per 100 m här."});
 }
 
 function fmtH(h){ const H=Math.floor(h), M=Math.round((h-H)*60);
@@ -963,7 +991,7 @@ function renderWeek(ws){
     rows+='<div class="wkrow'+(first?" first":"")+'"><span class="nm"><i style="background:'+(COLORS[s]||COLORS.other)+'"></i>'+SPORT_LABEL[s]+
       (c&&c.n?' <span style="color:var(--faint)">×'+c.n+'</span>':'')+'</span><span class="val">'+val+'<span class="delta">'+dTxt+'</span></span></div>';
     first=false; }
-  if(!rows) rows='<div class="empty">Inga pass registrerade denna vecka ännu.</div>';
+  if(!rows) rows=emptyState("Inga pass den här veckan än","Första passet dyker upp så fort klockan synkat mot intervals.icu.","bars");
   else { const d=tot-ptot, dTxt=Math.abs(d)<0.017? "±0" : (d>0?"▲ ":"▼ ")+fmtH(Math.abs(d));
     rows+='<div class="wkrow total"><span class="nm">Totalt <span style="color:var(--faint)">×'+totN+'</span></span><span class="val">'+fmtH(tot)+'<span class="delta">'+dTxt+'</span></span></div>'; }
   $("#weektable").innerHTML=rows; }
@@ -1017,7 +1045,7 @@ function renderRace(plan){
   const legs=getRace(plan), card=$("#race-card"), empty=$("#race-empty");
   const t=today(), r=plan.race, days=Math.ceil((r.date-t)/DAY);
   raceImminent = days>=0 && days<=2 && legs.length>0;
-  if(!legs.length){ card.hidden=true; if(empty) empty.hidden=false; $("#race-sub").textContent=""; return; }
+  if(!legs.length){ card.hidden=true; if(empty){ empty.hidden=false; empty.innerHTML=emptyState("Ingen tävlingsplan än","Lägg in en Race-flik i ditt Sheet med mål, split och pacingstrategi per gren — så byggs tävlingsdagskortet här.","flag"); } $("#race-sub").textContent=""; return; }
   if(empty) empty.hidden=true; card.hidden=false;
   card.classList.toggle("hi", raceImminent);
   $("#race-sub").textContent=r.name;
