@@ -98,9 +98,12 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 #flags{display:flex; flex-direction:column; gap:8px; margin-top:14px}
 .flag{display:flex; gap:10px; align-items:flex-start; padding:11px 13px; border-radius:12px;
   background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--mut); font-size:14px}
-.flag.risk{border-left-color:var(--risk)}
+.flag.risk{border-left-color:var(--risk); border-left-width:4px; background:linear-gradient(90deg,rgba(226,101,79,.10),rgba(226,101,79,0) 60%)}
 .flag.warn{border-left-color:var(--warn)}
 .flag.ok{border-left-color:var(--ok); color:var(--mut)}
+.flag .tag{font-family:var(--disp); font-weight:600; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; display:block; margin-bottom:1px}
+.flag.risk .tag{color:var(--risk)} .flag.warn .tag{color:var(--warn)} .flag.ok .tag{color:var(--ok)}
+.flag.risk b{font-size:14.5px}
 .flag b{display:block; font-size:13.5px}
 .flag .d{color:var(--mut); font-size:13px}
 
@@ -207,6 +210,23 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 .help ol{padding-left:18px} .help li{margin:4px 0}
 #onboard{margin-top:18px}
 
+/* ---------- Tävlingsdag ---------- */
+.raceleg{display:flex; align-items:baseline; gap:11px; padding:11px 0; border-top:1px solid var(--line)}
+.raceleg:first-child{border-top:0}
+.raceleg .dot{width:10px; height:10px; border-radius:50%; flex:0 0 auto; align-self:center}
+.raceleg .lg{flex:1; min-width:0}
+.raceleg .lg b{font-family:var(--disp); font-weight:600; font-size:16px; letter-spacing:.05em; text-transform:uppercase; display:block}
+.raceleg .lg .strat{color:var(--mut); font-size:13px; margin-top:2px}
+.raceleg .num{text-align:right; flex:0 0 auto}
+.raceleg .num .mal{font-variant-numeric:tabular-nums; font-size:14px}
+.raceleg .num .split{font-family:var(--disp); font-weight:600; font-size:17px; color:var(--ink)}
+.raceleg.total{border-top:2px solid var(--line); margin-top:4px; padding-top:13px}
+.raceleg.total .lg b{font-size:18px}
+.raceleg.total .num .split{font-size:22px}
+.racehero{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:6px}
+.racehero .cd{font-family:var(--disp); font-weight:700; font-size:15px; color:var(--ink)}
+.racehero .cd b{font-size:22px}
+
 /* ---------- Kallstarts-splash ---------- */
 #splash{position:fixed; inset:0; z-index:100; background:radial-gradient(120% 90% at 50% 35%, #15243B 0%, #0C1320 70%);
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
@@ -243,6 +263,11 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
       <div class="tl-detail" id="tl-detail"></div>
     </div>
     <div id="flags" aria-live="polite"></div>
+  </section>
+
+  <section id="sec-race" hidden>
+    <h2>Tävlingsdag <small id="race-sub"></small></h2>
+    <div class="card" id="race-card"></div>
   </section>
 
   <div id="onboard"></div>
@@ -326,6 +351,8 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     <input id="in-plan" type="url" placeholder="https://docs.google.com/…&output=csv">
     <label for="in-ms">Google Sheet — CSV-länk för fliken Delmal</label>
     <input id="in-ms" type="url" placeholder="https://docs.google.com/…&output=csv">
+    <label for="in-race">Google Sheet — CSV-länk för fliken Race (valfri, tävlingsdag)</label>
+    <input id="in-race" type="url" placeholder="https://docs.google.com/…&output=csv">
     <label for="in-proxy">Proxy-prefix (lämna tomt — används bara om direktanrop blockeras)</label>
     <input id="in-proxy" type="url" placeholder="https://din-worker.workers.dev/?url=">
     <div class="row">
@@ -346,6 +373,9 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
       <p style="margin-top:8px">Flik <b>Delmal</b>:</p>
       <p><code>gren</code> <code>beskrivning</code> <code>plandatum</code> <code>faktiskt</code> <code>status</code> <code>varde</code> <code>anteckning</code></p>
       <p>gren = sim/cykel/löp/brick/styrka · status = klart/pågår/skjutet/risk (tomt = planerat) · varde = valfri siffra, t.ex. längsta kontinuerliga simdistans i meter.</p>
+      <h3>Flik <b>Race</b> (valfri — visar tävlingsdagskortet)</h3>
+      <p><code>race</code> <code>gren</code> <code>mal</code> <code>split</code> <code>strategi</code></p>
+      <p>En rad per gren: gren = Sim/T1/Cykel/T2/Löp/Total. mal = mål (t.ex. 2:05/100m, 225 W). split = beräknad tid. strategi = en rad coach-instruktion. race = tävlingens namn (matchar Plan); lämna tomt så gäller raden närmaste tävling.</p>
       <h3>3 · Publicera flikarna som CSV</h3>
       <ol>
         <li>I Sheet: Arkiv → Dela → <b>Publicera på webben</b>.</li>
@@ -364,7 +394,7 @@ const DAY=86400000;
 const FALLBACK_RACE={name:"Holmsjö Triathlon", date:"2026-07-25"};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
-let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[]};
+let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
 
 /* ============ Hjälpare ============ */
 const $=(s)=>document.querySelector(s);
@@ -445,7 +475,8 @@ async function refreshAll(){
     activities: fetchIntervals("/activities?oldest="+iso(addDays(t,-120))+"&newest="+iso(addDays(t,1))),
     wellness:   fetchIntervals("/wellness?oldest="+iso(addDays(t,-45))+"&newest="+iso(t)),
     plan:       cfg.planUrl? fetchMaybeProxy(cfg.planUrl).then(r=>r.text()).then(parseCSV) : Promise.resolve([]),
-    milestones: cfg.msUrl?   fetchMaybeProxy(cfg.msUrl).then(r=>r.text()).then(parseCSV)   : Promise.resolve([])
+    milestones: cfg.msUrl?   fetchMaybeProxy(cfg.msUrl).then(r=>r.text()).then(parseCSV)   : Promise.resolve([]),
+    race:       cfg.raceUrl? fetchMaybeProxy(cfg.raceUrl).then(r=>r.text()).then(parseCSV) : Promise.resolve([])
   };
   const keys=Object.keys(tasks);
   const res=await Promise.allSettled(Object.values(tasks));
@@ -518,32 +549,35 @@ function computeFlags(weeks, plan, inten, ms){
   const flags=[], t=today();
   const cw=weeks[weeks.length-1];
   if(cw && cw.cap!=null && cw.runKm > cw.cap)
-    flags.push({lv:"risk", t:"Löpvolym över 110 %-taket",
-      d:n1(cw.runKm)+" km denna vecka — taket är "+n1(cw.cap)+" km (110 % av 3-veckorssnittet). Stryk eller korta nästa löppass."});
+    flags.push({lv:"risk", t:"Löpvolymen sprängde taket",
+      d:"Du ligger "+n1(cw.runKm-cw.cap)+" km över veckans tak ("+n1(cw.runKm)+" mot "+n1(cw.cap)+" km). Korta eller stryk nästa löppass — med din fothistorik är det inte värt risken så här nära Holmsjö."});
   const lastSwim=data.activities.filter(a=>sportOf(a)==="swim").map(actDate).sort((a,b)=>b-a)[0];
   if(data.activities.length){
     const gap=lastSwim? Math.floor((t-lastSwim)/DAY) : 99;
-    if(gap>7) flags.push({lv:"risk", t:"Simning tappad",
-      d:(lastSwim? gap+" dagar sedan senaste simpass." : "Inget simpass i datan.")+" Simning får aldrig tappas — boka in ett pass."}); }
+    if(gap>7) flags.push({lv:"risk", t:"Simningen har glappat",
+      d:(lastSwim? "Det var "+gap+" dagar sedan du sam." : "Inget simpass i datan.")+" Boka ett pass den här veckan — simningen är din tunnaste gren och den straffar sig snabbast i öppet vatten."}); }
   for(const m of ms){ if(m.status!=="done"&&m.plan&&m.plan<=addDays(t,7)&&!m.done){
-    flags.push({lv:"warn", t:"Delmål i riskzonen", d:"”"+m.desc+"” har plandatum "+dfmt(m.plan)+" och är inte klart."}); break; } }
+    flags.push({lv:"warn", t:"Ett delmål håller på att rinna iväg", d:"”"+m.desc+"” skulle vara klart "+dfmt(m.plan)+". Planera in det den här veckan eller flytta det medvetet — låt det inte bara glida."}); break; } }
   const ph=currentPhase(plan);
   if(inten && ph && ph.target!=null && Math.abs(inten.loPct-ph.target)>10){
-    const dir=inten.loPct<ph.target? "för mycket hårt arbete":"mer lågintensivt än planerat";
-    flags.push({lv:"warn", t:"Intensitetsfördelning avviker",
-      d:Math.round(inten.loPct)+" % lågintensivt senaste 14 dagarna — fasens mål är ~"+ph.target+" % ("+dir+")."}); }
+    if(inten.loPct<ph.target)
+      flags.push({lv:"warn", t:"Du har kört för hårt",
+        d:"Bara "+Math.round(inten.loPct)+" % lågintensivt senaste 14 dagarna — fasen ("+esc(ph.name)+") vill ha ~"+ph.target+" %. Lägg nästa par pass i Z2. Du bygger ingen form i gråzonen, bara trötthet."});
+    else
+      flags.push({lv:"warn", t:"Mycket lugnt på sistone",
+        d:Math.round(inten.loPct)+" % lågintensivt mot fasens ~"+ph.target+" %. Om kroppen är pigg tål den ett kvalitetspass till den här veckan."}); }
   const hard5=data.activities.filter(a=>{ const d=actDate(a); if(!d||d<addDays(t,-5)) return false;
     const z=zones(a); if(!z) return false; let s=0; for(let i=3;i<z.length;i++) s+=z[i]||0; return s>=1200; });
-  if(hard5.length>=3) flags.push({lv:"warn", t:"Hög hård-frekvens",
-    d:hard5.length+" pass med ≥20 min i Z4+ de senaste 5 dagarna. Planera in lätta dagar."});
+  if(hard5.length>=3) flags.push({lv:"warn", t:"Tre hårda pass på kort tid",
+    d:hard5.length+" pass med ≥20 min i Z4+ de senaste 5 dagarna. Lägg in en lätt dag eller vila innan nästa kvalitetspass — annars tränar du sönder formen istället för att bygga den."});
   const rhr=data.wellness.map(w=>({d:pd(w.id), v:w.restingHR??w.resting_hr})).filter(x=>x.d&&x.v>0).sort((a,b)=>a.d-b.d);
   if(rhr.length>=20){
     const last7=rhr.filter(x=>x.d>=addDays(t,-7));
     const base=rhr.filter(x=>x.d<addDays(t,-7)&&x.d>=addDays(t,-37));
     if(last7.length>=4&&base.length>=14){
       const m7=last7.reduce((s,x)=>s+x.v,0)/last7.length, mb=base.reduce((s,x)=>s+x.v,0)/base.length;
-      if(m7-mb>5) flags.push({lv:"warn", t:"Återhämtning: kolla läget",
-        d:"Vilopulsen ligger "+n1(m7-mb)+" slag över 30-dagarsbaslinjen ("+Math.round(m7)+" vs "+Math.round(mb)+"). Sov, ät, sänk intensiteten tills den vänder."}); } }
+      if(m7-mb>5) flags.push({lv:"warn", t:"Vilopulsen är förhöjd",
+        d:"Den ligger "+n1(m7-mb)+" slag över din 30-dagarsnormal ("+Math.round(m7)+" mot "+Math.round(mb)+"). Något tär på dig — sömn, stress eller en infektion på väg. Sänk intensiteten tills den vänder ner igen."}); } }
   return flags; }
 
 /* ============ SVG-hjälpare ============ */
@@ -632,8 +666,9 @@ function renderTimeline(plan){
 
 function renderFlags(flags){
   const c=$("#flags");
-  if(!flags.length){ c.innerHTML='<div class="flag ok"><div><b style="color:var(--ok)">Allt enligt plan</b><span class="d">Inga avvikelser att reagera på just nu.</span></div></div>'; return; }
-  c.innerHTML=flags.map(f=>'<div class="flag '+f.lv+'"><div><b>'+esc(f.t)+'</b><span class="d">'+esc(f.d)+'</span></div></div>').join("");
+  if(!flags.length){ c.innerHTML='<div class="flag ok"><div><span class="tag">På plan</span><b style="color:var(--ok)">Allt rullar enligt plan</b><span class="d">Inget att reagera på just nu. Fortsätt som du gör.</span></div></div>'; return; }
+  const tag={risk:"Åtgärd", warn:"Se över", ok:"På plan"};
+  c.innerHTML=flags.map(f=>'<div class="flag '+f.lv+'"><div><span class="tag">'+tag[f.lv]+'</span><b>'+esc(f.t)+'</b><span class="d">'+esc(f.d)+'</span></div></div>').join("");
 }
 
 let msDoneOpen=false;
@@ -653,7 +688,7 @@ function renderMilestones(ms){
     '<span class="txt"><b>'+esc(m.desc)+'</b><span class="dates">'+(SPORT_LABEL[m.gren]||"")+' · plan '+dfmt(m.plan)+(m.done? " → klart "+dfmt(m.done):"")+(m.varde?" · "+n1(m.varde):"")+'</span></span>'+
     pill(m)+(m.note? '<span class="note">'+esc(m.note)+'</span>':'')+'</div>';
   const grp=(title,arr)=>arr.length? '<div class="msgroup"><h3>'+title+'</h3>'+arr.map(row).join("")+'</div>' : "";
-  const prog= ms.length? '<div class="msprog"><div class="bar"><i style="width:'+Math.round(100*g3.length/ms.length)+'%"></i></div><span>'+g3.length+' av '+ms.length+' klara</span></div>' : "";
+  const prog= ms.length? '<div class="msprog"><div class="bar"><i style="width:'+Math.round(100*g3.length/ms.length)+'%"></i></div><span>'+g3.length+' av '+ms.length+' klara · '+(ms.length-g3.length)+' kvar</span></div>' : "";
   const done= g3.length? '<div class="msgroup"><h3 class="mshead" id="ms-done-h" role="button" tabindex="0" aria-expanded="'+msDoneOpen+'">Avklarade · '+g3.length+' <span class="chev">'+(msDoneOpen?"▾":"▸")+'</span></h3><div id="ms-done"'+(msDoneOpen?"":" hidden")+'>'+g3.map(row).join("")+'</div></div>' : "";
   c.innerHTML=prog+grp("Nu — inom 14 dagar",g1)+grp("Senare",g2)+done;
   const dh=$("#ms-done-h");
@@ -915,12 +950,44 @@ async function copyReport(){
   const b=$("#btn-report"), old=b.textContent;
   b.textContent="Kopierad ✓"; setTimeout(()=>{ b.textContent=old; },1600); }
 
+function getRace(plan){
+  const focus=(plan.race&&plan.race.name||"").toLowerCase().trim();
+  const rows=data.race.map(r=>({
+    race:(r.race||"").trim(), gren:(r.gren||"").trim(), mal:(r.mal||"").trim(),
+    split:(r.split||"").trim(), strategi:(r.strategi||"").trim() }))
+    .filter(r=>r.gren||r.mal||r.split||r.strategi);
+  // Rader för fokustävlingen: matchar namn (delsträng åt båda håll) eller har tomt race-fält.
+  const mine=rows.filter(r=>{ if(!r.race) return true; const rn=r.race.toLowerCase();
+    return focus && (focus.includes(rn)||rn.includes(focus)); });
+  return mine; }
+
+function renderRace(plan){
+  const sec=$("#sec-race"), legs=getRace(plan);
+  if(!legs.length){ sec.hidden=true; return; }
+  sec.hidden=false;
+  const t=today(), r=plan.race, days=Math.ceil((r.date-t)/DAY);
+  $("#race-sub").textContent=r.name;
+  const colorOf=(g)=>{ const k=normGren(g); return COLORS[k]||"#7E8AA0"; };
+  const isTotal=(g)=>/total|prognos|m[åa]l/i.test(g);
+  const isTrans=(g)=>/^t[12]|växling|transition/i.test(g);
+  let body='<div class="racehero"><div class="cd">'+esc(r.name)+' · '+r.date.toLocaleDateString("sv-SE",{day:"numeric",month:"long"})+
+    '</div><div class="cd"><b>'+(days>=0?days:"✓")+'</b> '+(days===1?"dag":"dagar")+' kvar</div></div>';
+  for(const l of legs){
+    const total=isTotal(l.gren);
+    const dot = total? "" : '<span class="dot" style="background:'+(isTrans(l.gren)?"#7E8AA0":colorOf(l.gren))+'"></span>';
+    body+='<div class="raceleg'+(total?" total":"")+'">'+dot+
+      '<span class="lg"><b>'+esc(l.gren)+'</b>'+(l.strategi?'<span class="strat">'+esc(l.strategi)+'</span>':'')+'</span>'+
+      '<span class="num">'+(l.mal?'<div class="mal" style="color:var(--mut)">'+esc(l.mal)+'</div>':'')+(l.split?'<div class="split">'+esc(l.split)+'</div>':'')+'</span></div>'; }
+  $("#race-card").innerHTML=body;
+}
+
 function renderAll(ts){
   const plan=getPlan(), ms=getMilestones(), weeks=weeklyAgg(12), inten=intensity14();
   renderHeader(plan);
   $("#tl-band").parentElement.querySelectorAll(".tl-today").forEach(e=>e.remove());
   renderTimeline(plan);
   renderFlags(computeFlags(weeks, plan, inten, ms));
+  renderRace(plan);
   renderMilestones(ms);
   renderVolume(weeks, plan);
   renderRun(weeks);
@@ -946,13 +1013,13 @@ function emblemSVG(){
 }
 // Ordmärke: "TRIZON" + tre staplar som E (≡). textLength låser bredden så E:t hamnar rätt i alla webbläsare.
 function wordmarkSVG(h){
-  const fs=34, tl=150;          // "TRIZON" låst bredd
-  const ex=tl+2, ew=22, t=5.2;  // E-staplar: litet glapp, bokstavsbred
-  // Versalboxen går från y≈9.2 (cap-top) till y=34 (baslinje). Staplarna fyller den exakt.
-  const tops=[9.2, 19.0, 28.8];
-  const bars=tops.map(y=>'<rect x="'+ex+'" y="'+y.toFixed(1)+'" width="'+ew+'" height="'+t+'" rx="1" fill="#E9EEF5"/>').join("");
+  const fs=34, tl=158;          // "TRIZON" luftig tracking (spacing, ej glyfsträckning)
+  const ex=tl+7, ew=20, t=4.4;  // E-staplar: matchar tracking-gapet, bokstavsvikt
+  // Versalbox 9.7–34. Staplarna sitter en aning inom den (10.7–32.5) så E:t inte känns större.
+  const tops=[10.7, 19.4, 28.1];
+  const bars=tops.map(y=>'<rect x="'+ex+'" y="'+y.toFixed(1)+'" width="'+ew+'" height="'+t+'" rx="1.4" fill="#E9EEF5"/>').join("");
   return '<svg viewBox="0 0 '+(ex+ew+2)+' 44" height="'+h+'" role="img" aria-label="TRIZONE">'+
-    '<text x="0" y="34" textLength="'+tl+'" lengthAdjust="spacingAndGlyphs" font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="'+fs+'" letter-spacing="1" fill="#E9EEF5">TRIZON</text>'+
+    '<text x="0" y="34" textLength="'+tl+'" lengthAdjust="spacing" font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="'+fs+'" fill="#E9EEF5">TRIZON</text>'+
     bars+'</svg>';
 }
 function renderBrand(){
@@ -976,12 +1043,12 @@ if("serviceWorker" in navigator){
 function loadCfg(){ try{ return JSON.parse(localStorage.getItem(CFG_KEY)); }catch(e){ return null; } }
 function openSettings(){ const c=cfg||{};
   $("#in-key").value=c.apiKey||""; $("#in-id").value=c.athleteId||"";
-  $("#in-plan").value=c.planUrl||""; $("#in-ms").value=c.msUrl||""; $("#in-proxy").value=c.proxy||"";
+  $("#in-plan").value=c.planUrl||""; $("#in-ms").value=c.msUrl||""; $("#in-race").value=c.raceUrl||""; $("#in-proxy").value=c.proxy||"";
   $("#settings").classList.add("show"); }
 function closeSettings(){ $("#settings").classList.remove("show"); }
 function saveSettings(){
   cfg={ apiKey:$("#in-key").value.trim(), athleteId:$("#in-id").value.trim(),
-        planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), proxy:$("#in-proxy").value.trim() };
+        planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), raceUrl:$("#in-race").value.trim(), proxy:$("#in-proxy").value.trim() };
   if(cfg.athleteId && !/^i/i.test(cfg.athleteId) && /^\d+$/.test(cfg.athleteId)) cfg.athleteId="i"+cfg.athleteId;
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   closeSettings(); refreshAll(); }
