@@ -946,9 +946,11 @@ function emblemSVG(){
 }
 // Ordmärke: "TRIZON" + tre staplar som E (≡). textLength låser bredden så E:t hamnar rätt i alla webbläsare.
 function wordmarkSVG(h){
-  const fs=34, tl=150; // "TRIZON" fast bredd
-  const ex=tl+10, ew=26, et=5.5, gap=8.6; // E-staplarnas geometri
-  const bars=[0,1,2].map(i=>'<rect x="'+ex+'" y="'+(8.5+i*gap)+'" width="'+ew+'" height="'+et+'" rx="1" fill="#E9EEF5"/>').join("");
+  const fs=34, tl=150;          // "TRIZON" låst bredd
+  const ex=tl+2, ew=22, t=5.2;  // E-staplar: litet glapp, bokstavsbred
+  // Versalboxen går från y≈9.2 (cap-top) till y=34 (baslinje). Staplarna fyller den exakt.
+  const tops=[9.2, 19.0, 28.8];
+  const bars=tops.map(y=>'<rect x="'+ex+'" y="'+y.toFixed(1)+'" width="'+ew+'" height="'+t+'" rx="1" fill="#E9EEF5"/>').join("");
   return '<svg viewBox="0 0 '+(ex+ew+2)+' 44" height="'+h+'" role="img" aria-label="TRIZONE">'+
     '<text x="0" y="34" textLength="'+tl+'" lengthAdjust="spacingAndGlyphs" font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="'+fs+'" letter-spacing="1" fill="#E9EEF5">TRIZON</text>'+
     bars+'</svg>';
