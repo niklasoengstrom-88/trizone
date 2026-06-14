@@ -45,8 +45,10 @@ main{max-width:1060px; margin:0 auto; padding:0 16px}
 /* ---------- Header / hero ---------- */
 header.hero{max-width:1060px; margin:0 auto; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px}
 .hero-actions{display:flex; gap:8px; flex:0 0 auto}
-.brandrow{display:flex; align-items:center; gap:10px}
-.brandrow svg{height:30px; width:auto; display:block}
+.brandrow{display:flex; align-items:center; gap:8px}
+.brandrow .bemblem{display:block; width:28px; height:28px}
+.brandrow .bemblem svg{width:100%; height:100%; display:block}
+.brandrow svg.wm{display:block}
 .herohead{margin-bottom:var(--s4)}
 .eyebrow{font-family:var(--disp); font-weight:600; letter-spacing:.18em; text-transform:uppercase; font-size:13px; color:var(--mut)}
 .hero h1{font-family:var(--disp); font-weight:600; font-size:23px; line-height:1.1; letter-spacing:.01em; color:var(--ink); margin-top:1px}
@@ -461,6 +463,11 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     <input id="in-race" type="url" placeholder="https://docs.google.com/…&output=csv">
     <label for="in-proxy">Proxy-prefix (lämna tomt — används bara om direktanrop blockeras)</label>
     <input id="in-proxy" type="url" placeholder="https://din-worker.workers.dev/?url=">
+    <label>Logotyp i header</label>
+    <div class="segctrl" id="logo-seg" style="margin-top:4px">
+      <button type="button" data-logo="full" class="active">Emblem + text</button>
+      <button type="button" data-logo="emblem">Bara emblem</button>
+    </div>
     <div class="row">
       <button class="btn primary" id="btn-save">Spara & hämta data</button>
       <button class="btn" id="btn-close">Stäng</button>
@@ -1240,25 +1247,26 @@ function renderAll(ts){
 }
 
 /* ============ Varumärke (inline SVG) ============ */
-const EMBLEM_FACETS=[
-  ["#56B4D3","#3E8AA3","M50.00,8.00 L10.00,84.00 L18.00,78.93 L50.00,18.13 Z","M50.00,18.13 L18.00,78.93 L26.00,73.87 L50.00,28.27 Z"],
-  ["#E2654F","#B44C3B","M50.00,8.00 L90.00,84.00 L82.00,78.93 L50.00,18.13 Z","M50.00,18.13 L82.00,78.93 L74.00,73.87 L50.00,28.27 Z"],
-  ["#E3B341","#B88C2E","M10.00,84.00 L90.00,84.00 L82.00,78.93 L18.00,78.93 Z","M18.00,78.93 L82.00,78.93 L74.00,73.87 L26.00,73.87 Z"]
+/* Kanoniskt emblem — öppen triangel, tre rena färgband (cyan/röd/guld).
+   Samma geometri används i header, splash OCH ikonerna (PIL). En triangel överallt. */
+const EMBLEM_BANDS=[
+  ["#56B4D3","M50,8 L8,86 L31.52,71.44 L50,37.12 Z"],   // swim — vänster
+  ["#E2654F","M50,8 L92,86 L68.48,71.44 L50,37.12 Z"],   // run — höger
+  ["#E3B341","M8,86 L92,86 L68.48,71.44 L31.52,71.44 Z"] // bike — botten
 ];
 function emblemSVG(){
   let p="";
-  for(const [lt,dk,outer,inner] of EMBLEM_FACETS){
-    p+='<path d="'+outer+'" fill="'+lt+'"/><path d="'+inner+'" fill="'+dk+'"/>'; }
+  for(const [col,d] of EMBLEM_BANDS) p+='<path d="'+d+'" fill="'+col+'"/>';
   return '<svg viewBox="0 0 100 100" aria-hidden="true">'+p+'</svg>';
 }
 // Ordmärke: "TRIZON" + tre staplar som E (≡). textLength låser bredden så E:t hamnar rätt i alla webbläsare.
 const WM_GAP=0; // finjustering av N→E-glappet (px i viewBox-skala), nudgas vid behov
-function wordmarkSVG(h){
-  const fs=34, ls=6, ew=20, t=4.4;   // luftig tracking via letter-spacing (jämn, ej sträckt)
-  const tops=[10.7,19.4,28.1];        // E-staplar centrerade i versalboxen
-  const bars=tops.map(y=>'<rect y="'+y.toFixed(1)+'" width="'+ew+'" height="'+t+'" rx="1.4" fill="#E9EEF5"/>').join("");
+function wordmarkSVG(h, col){
+  const fs=34, ls=6, ew=20, t=4.4; col=col||"#E9EEF5";
+  const tops=[10.7,19.4,28.1];
+  const bars=tops.map(y=>'<rect y="'+y.toFixed(1)+'" width="'+ew+'" height="'+t+'" rx="1.4" fill="'+col+'"/>').join("");
   return '<svg class="wm" viewBox="0 0 240 44" height="'+h+'" preserveAspectRatio="xMinYMid meet" role="img" aria-label="TRIZONE" data-ls="'+ls+'" data-ew="'+ew+'">'+
-    '<text class="wm-t" x="0" y="34" letter-spacing="'+ls+'" font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="'+fs+'" fill="#E9EEF5">TRIZON</text>'+
+    '<text class="wm-t" x="0" y="34" letter-spacing="'+ls+'" font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="'+fs+'" fill="'+col+'">TRIZON</text>'+
     '<g class="wm-e">'+bars+'</g></svg>';
 }
 // Mät TRIZON:s verkliga bredd när fonten laddat och placera E exakt ett tracking-steg efter N.
@@ -1276,7 +1284,8 @@ function adjustWordmarks(){
 }
 function renderBrand(){
   const br=$("#brandrow");
-  if(br) br.innerHTML=emblemSVG()+wordmarkSVG(30);
+  const mode=(cfg&&cfg.logoMode)||"full";
+  if(br) br.innerHTML='<span class="bemblem">'+emblemSVG()+'</span>'+(mode==="emblem"? "" : wordmarkSVG(26,"#A9B6C7"));
   const sp=$("#splash");
   if(sp&&!sp.dataset.built){ sp.dataset.built="1";
     sp.innerHTML='<div style="display:flex;align-items:center;gap:14px">'+
@@ -1298,13 +1307,19 @@ function loadCfg(){ try{ return JSON.parse(localStorage.getItem(CFG_KEY)); }catc
 function openSettings(){ const c=cfg||{};
   $("#in-key").value=c.apiKey||""; $("#in-id").value=c.athleteId||"";
   $("#in-plan").value=c.planUrl||""; $("#in-ms").value=c.msUrl||""; $("#in-race").value=c.raceUrl||""; $("#in-proxy").value=c.proxy||"";
+  const lm=c.logoMode||"full";
+  $("#logo-seg").querySelectorAll("button").forEach(b=>b.classList.toggle("active", b.getAttribute("data-logo")===lm));
   $("#settings").classList.add("show"); }
 function closeSettings(){ $("#settings").classList.remove("show"); }
 function saveSettings(){
+  const logoBtn=$("#logo-seg").querySelector("button.active");
+  const logoMode=logoBtn? logoBtn.getAttribute("data-logo") : ((cfg&&cfg.logoMode)||"full");
   cfg={ apiKey:$("#in-key").value.trim(), athleteId:$("#in-id").value.trim(),
-        planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), raceUrl:$("#in-race").value.trim(), proxy:$("#in-proxy").value.trim() };
+        planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), raceUrl:$("#in-race").value.trim(), proxy:$("#in-proxy").value.trim(),
+        logoMode:logoMode };
   if(cfg.athleteId && !/^i/i.test(cfg.athleteId) && /^\d+$/.test(cfg.athleteId)) cfg.athleteId="i"+cfg.athleteId;
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  renderBrand();
   closeSettings(); toast("Inställningar sparade ✓"); refreshAll(); }
 
 function showOnboarding(){
@@ -1319,6 +1334,14 @@ function boot(){
   switchTab("nu");
   $("#form-seg").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>switchSeg(b.getAttribute("data-seg"))));
   switchSeg("belastning");
+  const setLogo=(m)=>{ cfg=cfg||{}; cfg.logoMode=m;
+    try{ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }catch(e){}
+    $("#logo-seg").querySelectorAll("button").forEach(x=>x.classList.toggle("active", x.getAttribute("data-logo")===m));
+    renderBrand(); };
+  $("#logo-seg").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>setLogo(b.getAttribute("data-logo"))));
+  $("#brandrow").addEventListener("click",()=>setLogo(((cfg&&cfg.logoMode)||"full")==="full"?"emblem":"full"));
+  $("#brandrow").style.cursor="pointer";
+  $("#brandrow").title="Tryck för att växla logotyp";
   hideSplash();
   $("#btn-settings").addEventListener("click",openSettings);
   $("#btn-close").addEventListener("click",closeSettings);
