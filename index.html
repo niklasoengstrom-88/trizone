@@ -134,6 +134,17 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 .mshead[aria-expanded="true"] .chev{transform:rotate(90deg)}
 .mshead[aria-expanded="true"]{color:var(--ink); border-radius:12px 12px 0 0; border-bottom-color:transparent}
 #ms-done{border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px; padding:6px 10px}
+
+/* ---------- Flagghistorik ---------- */
+#flaglog{margin-top:var(--s2)}
+#flaglog-body{border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px; padding:4px 12px}
+.flrow{display:flex; align-items:center; gap:10px; padding:9px 2px; border-top:1px solid var(--line-soft); font-size:13px}
+.flrow:first-child{border-top:0}
+.flrow .dot{width:8px; height:8px; border-radius:50%; flex:0 0 auto}
+.flrow .ft{flex:1; min-width:0}
+.flrow .ft b{color:var(--ink); font-weight:500; font-size:13.5px; display:block}
+.flrow .recur{font-family:var(--disp); font-weight:600; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--warn); margin-left:6px}
+.flrow .per{font-size:12px; color:var(--faint); flex:0 0 auto; text-align:right; white-space:nowrap}
 .msprog{display:flex; align-items:center; gap:10px; margin:2px 2px 12px; font-size:12px; color:var(--faint)}
 .msprog .bar{flex:1; height:4px; border-radius:99px; background:#1A2436; overflow:hidden}
 .msprog .bar i{display:block; height:100%; background:var(--ok); border-radius:99px}
@@ -310,6 +321,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
         <div class="tl-detail" id="tl-detail"></div>
       </div>
       <div id="flags" aria-live="polite"></div>
+      <div id="flaglog"></div>
     </section>
 
     <div id="onboard"></div>
@@ -604,26 +616,26 @@ function computeFlags(weeks, plan, inten, ms){
   const flags=[], t=today();
   const cw=weeks[weeks.length-1];
   if(cw && cw.cap!=null && cw.runKm > cw.cap)
-    flags.push({lv:"risk", t:"Löpvolymen sprängde taket",
+    flags.push({key:"run-cap", lv:"risk", t:"Löpvolymen sprängde taket",
       d:"Du ligger "+n1(cw.runKm-cw.cap)+" km över veckans tak ("+n1(cw.runKm)+" mot "+n1(cw.cap)+" km). Korta eller stryk nästa löppass — med din fothistorik är det inte värt risken så här nära Holmsjö."});
   const lastSwim=data.activities.filter(a=>sportOf(a)==="swim").map(actDate).sort((a,b)=>b-a)[0];
   if(data.activities.length){
     const gap=lastSwim? Math.floor((t-lastSwim)/DAY) : 99;
-    if(gap>7) flags.push({lv:"risk", t:"Simningen har glappat",
+    if(gap>7) flags.push({key:"swim-gap", lv:"risk", t:"Simningen har glappat",
       d:(lastSwim? "Det var "+gap+" dagar sedan du sam." : "Inget simpass i datan.")+" Boka ett pass den här veckan — simningen är din tunnaste gren och den straffar sig snabbast i öppet vatten."}); }
   for(const m of ms){ if(m.status!=="done"&&m.plan&&m.plan<=addDays(t,7)&&!m.done){
-    flags.push({lv:"warn", t:"Ett delmål håller på att rinna iväg", d:"”"+m.desc+"” skulle vara klart "+dfmt(m.plan)+". Planera in det den här veckan eller flytta det medvetet — låt det inte bara glida."}); break; } }
+    flags.push({key:"milestone-risk", lv:"warn", t:"Ett delmål håller på att rinna iväg", d:"”"+m.desc+"” skulle vara klart "+dfmt(m.plan)+". Planera in det den här veckan eller flytta det medvetet — låt det inte bara glida."}); break; } }
   const ph=currentPhase(plan);
   if(inten && ph && ph.target!=null && Math.abs(inten.loPct-ph.target)>10){
     if(inten.loPct<ph.target)
-      flags.push({lv:"warn", t:"Du har kört för hårt",
+      flags.push({key:"intensity-high", lv:"warn", t:"Du har kört för hårt",
         d:"Bara "+Math.round(inten.loPct)+" % lågintensivt senaste 14 dagarna — fasen ("+esc(ph.name)+") vill ha ~"+ph.target+" %. Lägg nästa par pass i Z2. Du bygger ingen form i gråzonen, bara trötthet."});
     else
-      flags.push({lv:"warn", t:"Mycket lugnt på sistone",
+      flags.push({key:"intensity-low", lv:"warn", t:"Mycket lugnt på sistone",
         d:Math.round(inten.loPct)+" % lågintensivt mot fasens ~"+ph.target+" %. Om kroppen är pigg tål den ett kvalitetspass till den här veckan."}); }
   const hard5=data.activities.filter(a=>{ const d=actDate(a); if(!d||d<addDays(t,-5)) return false;
     const z=zones(a); if(!z) return false; let s=0; for(let i=3;i<z.length;i++) s+=z[i]||0; return s>=1200; });
-  if(hard5.length>=3) flags.push({lv:"warn", t:"Tre hårda pass på kort tid",
+  if(hard5.length>=3) flags.push({key:"hard-freq", lv:"warn", t:"Tre hårda pass på kort tid",
     d:hard5.length+" pass med ≥20 min i Z4+ de senaste 5 dagarna. Lägg in en lätt dag eller vila innan nästa kvalitetspass — annars tränar du sönder formen istället för att bygga den."});
   const rhr=data.wellness.map(w=>({d:pd(w.id), v:w.restingHR??w.resting_hr})).filter(x=>x.d&&x.v>0).sort((a,b)=>a.d-b.d);
   if(rhr.length>=20){
@@ -631,7 +643,7 @@ function computeFlags(weeks, plan, inten, ms){
     const base=rhr.filter(x=>x.d<addDays(t,-7)&&x.d>=addDays(t,-37));
     if(last7.length>=4&&base.length>=14){
       const m7=last7.reduce((s,x)=>s+x.v,0)/last7.length, mb=base.reduce((s,x)=>s+x.v,0)/base.length;
-      if(m7-mb>5) flags.push({lv:"warn", t:"Vilopulsen är förhöjd",
+      if(m7-mb>5) flags.push({key:"rhr", lv:"warn", t:"Vilopulsen är förhöjd",
         d:"Den ligger "+n1(m7-mb)+" slag över din 30-dagarsnormal ("+Math.round(m7)+" mot "+Math.round(mb)+"). Något tär på dig — sömn, stress eller en infektion på väg. Sänk intensiteten tills den vänder ner igen."}); } }
   return flags; }
 
@@ -1089,12 +1101,59 @@ function updateTabBadges(){
   if(raceImminent){ const d=document.createElement("span"); d.className="badge"; btn.appendChild(d); }
 }
 
+/* ============ Flagghistorik (persisteras lokalt per enhet) ============ */
+const FLAGLOG_KEY="trizone.flaglog.v1";
+let flogOpen=false;
+function loadFlagLog(){ try{ return JSON.parse(localStorage.getItem(FLAGLOG_KEY))||{}; }catch(e){ return {}; } }
+function processFlagLog(flags){
+  let log; try{ log=loadFlagLog(); }catch(e){ return {}; }
+  const t=iso(today()), active=new Set(flags.map(f=>f.key).filter(Boolean));
+  for(const f of flags){ if(!f.key) continue;
+    let e=log[f.key]; if(!e){ e=log[f.key]={title:f.t, lvl:f.lv, spells:[]}; }
+    e.title=f.t; e.lvl=f.lv;
+    const last=e.spells[e.spells.length-1];
+    if(!last || last.to!==null) e.spells.push({from:t, last:t, to:null});
+    else last.last=t;
+  }
+  for(const key in log){ if(active.has(key)) continue;
+    const sp=log[key].spells, last=sp[sp.length-1];
+    if(last && last.to===null) last.to=last.last;
+  }
+  // trimma: behåll max 6 spells per nyckel
+  for(const key in log){ const sp=log[key].spells; if(sp.length>6) log[key].spells=sp.slice(-6); }
+  try{ localStorage.setItem(FLAGLOG_KEY, JSON.stringify(log)); }catch(e){}
+  return log;
+}
+function renderFlagLog(log){
+  const c=$("#flaglog"); if(!c) return;
+  const resolved=[];
+  for(const key in log){ const e=log[key], n=e.spells.filter(s=>s.to).length;
+    for(const s of e.spells){ if(s.to) resolved.push({title:e.title, lvl:e.lvl, from:s.from, to:s.to, recur:n>=3}); } }
+  if(!resolved.length){ c.innerHTML=""; return; }
+  resolved.sort((a,b)=>(b.to<a.to?-1:b.to>a.to?1:0));
+  const show=resolved.slice(0,12);
+  const period=(s)=>{ const f=pd(s.from), t2=pd(s.to); const days=Math.round((t2-f)/DAY)+1;
+    return f&&t2? (dfmt(f)+(s.from!==s.to? "–"+dfmt(t2):"")+" · "+days+(days===1?" dag":" dgr")) : ""; };
+  const rows=show.map(s=>'<div class="flrow"><span class="dot" style="background:var(--'+(s.lvl==="risk"?"risk":"warn")+')"></span>'+
+    '<span class="ft"><b>'+esc(s.title)+(s.recur?'<span class="recur">återkommande</span>':'')+'</b></span>'+
+    '<span class="per">löst '+esc(period(s))+'</span></div>').join("");
+  c.innerHTML='<div class="mshead" id="flog-h" role="button" tabindex="0" aria-expanded="'+flogOpen+'">'+
+    '<span>Tidigare flaggor · '+resolved.length+'</span><span class="chev">›</span></div>'+
+    '<div id="flaglog-body"'+(flogOpen?"":" hidden")+'>'+rows+'</div>';
+  const h=$("#flog-h");
+  const tg=()=>{ flogOpen=!flogOpen; renderFlagLog(log); };
+  h.addEventListener("click",tg);
+  h.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();tg();} });
+}
+
 function renderAll(ts){
   const plan=getPlan(), ms=getMilestones(), weeks=weeklyAgg(12), inten=intensity14();
   renderHeader(plan);
   $("#tl-band").parentElement.querySelectorAll(".tl-today").forEach(e=>e.remove());
   renderTimeline(plan);
-  renderFlags(computeFlags(weeks, plan, inten, ms));
+  const flags=computeFlags(weeks, plan, inten, ms);
+  renderFlags(flags);
+  renderFlagLog(processFlagLog(flags));
   renderRace(plan);
   renderMilestones(ms);
   renderVolume(weeks, plan);
