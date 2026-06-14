@@ -45,12 +45,12 @@ header.hero{max-width:1060px; margin:0 auto; padding:14px 16px; display:flex; al
 .brandrow svg{height:30px; width:auto; display:block}
 .herohead{margin-bottom:var(--s4)}
 .eyebrow{font-family:var(--disp); font-weight:600; letter-spacing:.18em; text-transform:uppercase; font-size:13px; color:var(--mut)}
-.hero h1{font-family:var(--disp); font-weight:700; font-size:34px; line-height:1.05; letter-spacing:.01em}
-.countdown{display:flex; align-items:baseline; gap:8px; margin-top:2px}
-.countdown .n{font-family:var(--disp); font-weight:700; font-size:64px; line-height:.95; letter-spacing:.01em;
+.hero h1{font-family:var(--disp); font-weight:600; font-size:23px; line-height:1.1; letter-spacing:.01em; color:var(--ink); margin-top:1px}
+.countdown{display:flex; align-items:baseline; gap:9px; margin-top:6px}
+.countdown .n{font-family:var(--disp); font-weight:700; font-size:72px; line-height:.9; letter-spacing:-.01em;
   font-variant-numeric:tabular-nums}
 .countdown .u{color:var(--mut); font-size:14px}
-.racedate{color:var(--faint); font-size:13px; margin-top:2px}
+.racedate{color:var(--faint); font-size:13px; margin-top:4px; font-variant-numeric:tabular-nums}
 .iconbtn{background:var(--surface); border:1px solid var(--line); color:var(--mut); border-radius:10px;
   width:40px; height:40px; font-size:18px; flex:0 0 auto}
 #btn-refresh{font-size:21px}
@@ -99,8 +99,9 @@ section{margin:var(--s4) 0}
 h2{font-family:var(--disp); font-weight:600; font-size:16px; letter-spacing:.16em; text-transform:uppercase;
   color:var(--mut); margin-bottom:var(--s2); display:flex; align-items:baseline; gap:var(--s2)}
 h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transform:none; color:var(--faint)}
-.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:var(--s3)}
-.card.hi{background:var(--surface-hi); border-color:#26344A}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:var(--s3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.card.hi{background:var(--surface-hi); border-color:#26344A; box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}
 .card.lo{background:var(--surface-lo)}
 .grid2{display:grid; gap:var(--s3)}
 @media(min-width:880px){ .grid2{grid-template-columns:1fr 1fr} }
@@ -112,7 +113,8 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 /* ---------- Flaggor ---------- */
 #flags{display:flex; flex-direction:column; gap:var(--s2); margin-top:var(--s3)}
 .flag{display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border-radius:12px;
-  background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--mut); font-size:14px}
+  background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--mut); font-size:14px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
 .flag.risk{border-left-color:var(--risk); border-left-width:4px; background:linear-gradient(90deg,rgba(226,72,58,.10),rgba(226,72,58,0) 60%)}
 .flag.warn{border-left-color:var(--warn)}
 .flag.ok{border-left-color:var(--ok); color:var(--mut)}
@@ -260,6 +262,21 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
   background:var(--swim); box-shadow:0 0 0 2px var(--bg)}
 .lastupd-line{text-align:center; color:var(--faint); font-size:12px; margin:var(--s4) 0 0}
 
+/* ---------- Segmentkontroll ---------- */
+.segctrl{display:flex; gap:4px; padding:4px; background:var(--surface-lo); border:1px solid var(--line);
+  border-radius:12px; margin-top:var(--s3)}
+.segctrl button{flex:1; background:none; border:0; color:var(--mut); font-family:var(--disp); font-weight:600;
+  font-size:14px; letter-spacing:.1em; text-transform:uppercase; padding:9px 8px; border-radius:9px; cursor:pointer}
+.segctrl button.active{background:var(--surface-hi); color:var(--ink); box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+
+/* ---------- Toast ---------- */
+#toast{position:fixed; left:50%; bottom:calc(72px + env(safe-area-inset-bottom)); transform:translateX(-50%) translateY(8px);
+  background:#1A2738; border:1px solid #2C3D58; color:var(--ink); border-radius:11px; padding:10px 16px;
+  font-size:13.5px; box-shadow:0 8px 28px rgba(0,0,0,.45); opacity:0; pointer-events:none; z-index:60;
+  transition:opacity .2s, transform .2s; white-space:nowrap}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion: reduce){ #toast{transition:none} }
+
 /* ---------- Tävlingsdag ---------- */
 .raceleg{display:flex; align-items:baseline; gap:11px; padding:11px 0; border-top:1px solid var(--line)}
 .raceleg:first-child{border-top:0}
@@ -293,6 +310,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 <body>
 
 <div id="splash" aria-hidden="true"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <header class="hero">
   <div class="brandrow" id="brandrow"></div>
@@ -350,6 +368,12 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 
   <!-- ===== FORM ===== -->
   <div class="tabpanel" id="tab-form" data-tab="form" hidden>
+    <div class="segctrl" id="form-seg">
+      <button data-seg="belastning" class="active">Belastning</button>
+      <button data-seg="effektivitet">Effektivitet</button>
+    </div>
+
+    <div class="form-group" data-seg="belastning">
     <section id="sec-belastning">
       <h2>Belastning <small>senaste 12 veckorna</small></h2>
       <div class="grid2">
@@ -372,7 +396,9 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
       <h2>Intensitet <small>rullande 14 dagar, tid i pulszoner</small></h2>
       <div class="card" id="ch-intensity"></div>
     </section>
+    </div><!-- /belastning -->
 
+    <div class="form-group" data-seg="effektivitet" hidden>
     <section id="sec-effektivitet">
       <h2>Aerob effektivitet <small>samma puls, bättre output = progression</small></h2>
       <div class="grid3">
@@ -393,6 +419,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
         </div>
       </div>
     </section>
+    </div><!-- /effektivitet -->
   </div>
 
   <!-- ===== TÄVLING ===== -->
@@ -1038,8 +1065,8 @@ async function copyReport(){
   try{ await navigator.clipboard.writeText(txt); }
   catch(e){ const ta=document.createElement("textarea"); ta.value=txt;
     document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
-  const b=$("#btn-report"), old=b.textContent;
-  b.textContent="Kopierad ✓"; setTimeout(()=>{ b.textContent=old; },1600); }
+  toast("Veckorapport kopierad ✓");
+}
 
 function getRace(plan){
   const focus=(plan.race&&plan.race.name||"").toLowerCase().trim();
@@ -1073,6 +1100,20 @@ function renderRace(plan){
       '<span class="lg"><b>'+esc(l.gren)+'</b>'+(l.strategi?'<span class="strat">'+esc(l.strategi)+'</span>':'')+'</span>'+
       '<span class="num">'+(l.mal?'<div class="mal" style="color:var(--mut)">'+esc(l.mal)+'</div>':'')+(l.split?'<div class="split">'+esc(l.split)+'</div>':'')+'</span></div>'; }
   card.innerHTML=body;
+}
+
+/* ============ Toast & segment ============ */
+let _toastT=null;
+function toast(msg){
+  const el=$("#toast"); if(!el) return;
+  el.textContent=msg; el.classList.add("show");
+  clearTimeout(_toastT); _toastT=setTimeout(()=>el.classList.remove("show"), 1900);
+}
+let formSeg="belastning";
+function switchSeg(seg){
+  formSeg=seg;
+  document.querySelectorAll(".form-group").forEach(g=>g.hidden = g.getAttribute("data-seg")!==seg);
+  $("#form-seg").querySelectorAll("button").forEach(b=>b.classList.toggle("active", b.getAttribute("data-seg")===seg));
 }
 
 /* ============ Flikar ============ */
@@ -1234,7 +1275,7 @@ function saveSettings(){
         planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), raceUrl:$("#in-race").value.trim(), proxy:$("#in-proxy").value.trim() };
   if(cfg.athleteId && !/^i/i.test(cfg.athleteId) && /^\d+$/.test(cfg.athleteId)) cfg.athleteId="i"+cfg.athleteId;
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
-  closeSettings(); refreshAll(); }
+  closeSettings(); toast("Inställningar sparade ✓"); refreshAll(); }
 
 function showOnboarding(){
   $("#onboard").innerHTML='<div class="card"><div class="cardtitle">Kom igång</div>'+
@@ -1246,6 +1287,8 @@ function boot(){
   renderBrand();
   buildTabbar();
   switchTab("nu");
+  $("#form-seg").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>switchSeg(b.getAttribute("data-seg"))));
+  switchSeg("belastning");
   hideSplash();
   $("#btn-settings").addEventListener("click",openSettings);
   $("#btn-close").addEventListener("click",closeSettings);
