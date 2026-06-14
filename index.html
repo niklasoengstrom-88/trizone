@@ -303,10 +303,18 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 .racehero{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:6px}
 .racehero .cd{font-family:var(--disp); font-weight:700; font-size:15px; color:var(--ink)}
 .racehero .cd b{font-size:22px}
-.racenext{display:flex; align-items:center; gap:9px; padding:10px 12px; margin-bottom:6px;
-  background:var(--surface-lo); border:1px solid var(--line); border-radius:10px; font-size:13px; color:var(--mut)}
-.racenext .dot{width:8px; height:8px; border-radius:50%; flex:0 0 auto}
-.racenext b{color:var(--ink); font-weight:500}
+
+/* Nästa nyckelpass-streck i NU (under tidslinjen) */
+#nextkey{margin-top:var(--s2)}
+.nextkey{display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+  padding:11px 13px; background:var(--surface); border:1px solid var(--line); border-radius:11px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04); font-size:13.5px; color:var(--mut); cursor:pointer}
+.nextkey:hover{border-color:#26344A}
+.nextkey .dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto}
+.nextkey .nk-t{flex:1; min-width:0}
+.nextkey .nk-t b{color:var(--ink); font-weight:500}
+.nextkey .nk-when{color:var(--faint); flex:0 0 auto; white-space:nowrap; font-size:12.5px}
+.nextkey .chev{color:var(--faint); flex:0 0 auto}
 #sec-race.imminent .card{border-color:#2C4F77; box-shadow:0 0 0 1px #2C4F77, 0 8px 28px rgba(0,0,0,.35)}
 #sec-race.imminent h2 small{color:var(--accent)}
 
@@ -352,6 +360,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
         <div class="tl-band" id="tl-band" role="list" aria-label="Periodisering"></div>
         <div class="tl-detail" id="tl-detail"></div>
       </div>
+      <div id="nextkey"></div>
       <div id="flags" aria-live="polite"></div>
       <div id="flaglog"></div>
     </section>
@@ -1126,10 +1135,6 @@ function renderRace(plan){
   const isTrans=(g)=>/^t[12]|växling|transition/i.test(g);
   let body='<div class="racehero"><div class="cd">'+esc(r.name)+' · '+r.date.toLocaleDateString("sv-SE",{day:"numeric",month:"long"})+
     '</div><div class="cd"><b>'+(days>=0?days:"✓")+'</b> '+(days===1?"dag":"dagar")+' kvar</div></div>';
-  if(!raceImminent){ const nm=nextMilestone();
-    if(nm){ const nd=Math.ceil((nm.plan-t)/DAY);
-      body+='<div class="racenext"><span class="dot" style="background:'+(COLORS[nm.gren]||COLORS.other)+'"></span>'+
-        '<span>Nästa nyckelpass: <b>'+esc(nm.desc)+'</b> · '+dfmt(nm.plan)+(nd>=0?' (om '+nd+(nd===1?' dag':' dgr')+')':'')+'</span></div>'; } }
   for(const l of legs){
     const total=isTotal(l.gren);
     const dot = total? "" : '<span class="dot" style="background:'+(isTrans(l.gren)?"#7E8AA0":colorOf(l.gren))+'"></span>';
@@ -1224,11 +1229,25 @@ function renderFlagLog(log){
   h.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();tg();} });
 }
 
+function renderNextKey(){
+  const c=$("#nextkey"); if(!c) return;
+  const nm=nextMilestone(); const t=today();
+  if(!nm){ c.innerHTML=""; return; }
+  const nd=Math.ceil((nm.plan-t)/DAY);
+  const when = nd<=0? "idag" : "om "+nd+(nd===1?" dag":" dgr");
+  c.innerHTML='<button type="button" class="nextkey" aria-label="Nästa nyckelpass: '+esc(nm.desc)+', '+dfmt(nm.plan)+'">'+
+    '<span class="dot" style="background:'+(COLORS[nm.gren]||COLORS.other)+'"></span>'+
+    '<span class="nk-t">Nästa nyckelpass: <b>'+esc(nm.desc)+'</b></span>'+
+    '<span class="nk-when">'+dfmt(nm.plan)+' · '+when+'</span><span class="chev">›</span></button>';
+  c.querySelector(".nextkey").addEventListener("click",()=>switchTab("plan"));
+}
+
 function renderAll(ts){
   const plan=getPlan(), ms=getMilestones(), weeks=weeklyAgg(12), inten=intensity14();
   renderHeader(plan);
   $("#tl-band").parentElement.querySelectorAll(".tl-today").forEach(e=>e.remove());
   renderTimeline(plan);
+  renderNextKey();
   const flags=computeFlags(weeks, plan, inten, ms);
   renderFlags(flags);
   renderFlagLog(processFlagLog(flags));
