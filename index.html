@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0C1320">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TRIZONE">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <title>TRIZONE — mot Holmsjö</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,6 +35,8 @@ main{max-width:1060px; margin:0 auto; padding:0 16px}
 
 /* ---------- Header / hero ---------- */
 header.hero{max-width:1060px; margin:0 auto; padding:22px 16px 6px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px}
+.brandrow{display:flex; align-items:center; gap:10px; margin-bottom:10px}
+.brandrow svg{height:30px; width:auto; display:block}
 .eyebrow{font-family:var(--disp); font-weight:600; letter-spacing:.18em; text-transform:uppercase; font-size:13px; color:var(--mut)}
 .hero h1{font-family:var(--disp); font-weight:700; font-size:34px; line-height:1.05; letter-spacing:.01em}
 .countdown{display:flex; align-items:baseline; gap:8px; margin-top:2px}
@@ -133,6 +141,9 @@ svg{display:block; width:100%; height:auto}
   border:5px solid transparent; border-top-color:#0A1018}
 .tip.below::after{top:-5px; bottom:auto; border-top-color:transparent; border-bottom-color:#0A1018}
 .tip.clamp::after{display:none}
+.tip.bar{transform:translate(-50%,0); white-space:nowrap; line-height:1.5}
+.tip.bar::after{display:none}
+.tip.bar .h{color:var(--mut); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase}
 .hit{cursor:pointer}
 .legend{display:flex; flex-wrap:wrap; gap:12px; margin-top:8px; font-size:12px; color:var(--mut)}
 .legend i{display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:5px; vertical-align:0}
@@ -195,13 +206,26 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
   font-size:12px; color:#A8C7E0}
 .help ol{padding-left:18px} .help li{margin:4px 0}
 #onboard{margin-top:18px}
+
+/* ---------- Kallstarts-splash ---------- */
+#splash{position:fixed; inset:0; z-index:100; background:radial-gradient(120% 90% at 50% 35%, #15243B 0%, #0C1320 70%);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+  transition:opacity .45s ease; opacity:1}
+#splash.hide{opacity:0; pointer-events:none}
+#splash svg{width:min(46vw,220px); height:auto}
+#splash .sub{font-family:var(--disp); font-weight:600; letter-spacing:.34em; text-transform:uppercase; font-size:13px; color:var(--mut)}
+#splash .sub b{font-weight:600}
+@media (prefers-reduced-motion: reduce){ #splash{transition:none} }
 </style>
 </head>
 <body>
 
+<div id="splash" aria-hidden="true"></div>
+
 <header class="hero">
   <div>
-    <div class="eyebrow" id="eyebrow">TRIZONE · Olympisk distans</div>
+    <div class="brandrow" id="brandrow"></div>
+    <div class="eyebrow" id="eyebrow">Olympisk distans</div>
     <h1 id="racename">Mot Holmsjö</h1>
     <div class="countdown"><span class="n" id="cd-n">–</span><span class="u" id="cd-u">dagar kvar</span></div>
     <div class="racedate" id="cd-date"></div>
@@ -652,13 +676,19 @@ function renderVolume(weeks, plan){
     s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+y+'" y2="'+y+'" stroke="#1E2A3D" stroke-width="1"/>';
     s+=txt(pad.l-4, y+3, n1(max*gy)+"h", "#5C687C", 9, "end"); }
   const order=["swim","bike","run","strength","other"];
+  const cols=[];
   weeks.forEach((w,i)=>{ let y=pad.t+ih; const x=pad.l+i*bw+bw*0.18, wpx=bw*0.64;
     for(const k of order){ const v=w.vol[k]; if(v<=0) continue;
       const h=ih*v/max; y-=h;
       s+='<rect x="'+x+'" y="'+y+'" width="'+wpx+'" height="'+h+'" fill="'+COLORS[k]+'" rx="1.5"/>'; }
-    if(i%2===(weeks.length-1)%2) s+=txt(pad.l+i*bw+bw/2, H-8, "v"+weekNo(w.start), "#5C687C", 9, "middle"); });
+    if(i%2===(weeks.length-1)%2) s+=txt(pad.l+i*bw+bw/2, H-8, "v"+weekNo(w.start), "#5C687C", 9, "middle");
+    const tot=order.reduce((a,k)=>a+w.vol[k],0);
+    const parts=order.filter(k=>w.vol[k]>0.017).map(k=>SPORT_LABEL[k]+" "+hm(w.vol[k]));
+    cols.push({cx:pad.l+i*bw+bw/2, tip:'<span class="h">v'+weekNo(w.start)+' · totalt '+hm(tot)+'</span><br>'+(parts.join(" · ")||"inga pass")}); });
+  weeks.forEach((w,i)=>{ s+='<rect class="hit" data-i="'+i+'" x="'+(pad.l+i*bw)+'" y="'+pad.t+'" width="'+bw+'" height="'+ih+'" fill="transparent"/>'; });
   s+="</svg>";
   $("#ch-volume").innerHTML=s;
+  barTips($("#ch-volume"), W, cols);
   $("#lg-volume").innerHTML=["swim","bike","run","strength"].map(k=>'<span><i style="background:'+COLORS[k]+'"></i>'+SPORT_LABEL[k]+'</span>').join("");
 }
 
@@ -670,14 +700,19 @@ function renderRun(weeks){
   for(const gv of [Math.round(max/2), Math.round(max)]){
     s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+y(gv)+'" y2="'+y(gv)+'" stroke="#1E2A3D"/>';
     s+=txt(pad.l-4,y(gv)+3,gv+" km","#5C687C",9,"end"); }
+  const cols=[];
   weeks.forEach((w,i)=>{ const x=pad.l+i*bw+bw*0.2, wpx=bw*0.6;
     let fill="#3D5E80";
     if(w.cap!=null){ if(w.runKm>w.cap) fill="#E2654F"; else if(w.runKm>0.9*w.cap) fill="#E3B341"; }
     if(w.runKm>0) s+='<rect x="'+x+'" y="'+y(w.runKm)+'" width="'+wpx+'" height="'+(pad.t+ih-y(w.runKm))+'" fill="'+fill+'" rx="1.5"/>';
     if(w.cap!=null) s+='<line x1="'+(pad.l+i*bw+bw*0.08)+'" x2="'+(pad.l+i*bw+bw*0.92)+'" y1="'+y(w.cap)+'" y2="'+y(w.cap)+'" stroke="#E9EEF5" stroke-width="1.6" stroke-dasharray="3 2"/>';
-    if(i%2===(weeks.length-1)%2) s+=txt(pad.l+i*bw+bw/2,H-8,"v"+weekNo(w.start),"#5C687C",9,"middle"); });
+    if(i%2===(weeks.length-1)%2) s+=txt(pad.l+i*bw+bw/2,H-8,"v"+weekNo(w.start),"#5C687C",9,"middle");
+    const status = w.cap==null? "" : w.runKm>w.cap? " · över tak" : w.runKm>0.9*w.cap? " · nära tak" : "";
+    cols.push({cx:pad.l+i*bw+bw/2, tip:'<span class="h">v'+weekNo(w.start)+status+'</span><br>'+n1(w.runKm)+' km'+(w.cap!=null? ' · tak '+n1(w.cap)+' km':'')}); });
+  weeks.forEach((w,i)=>{ s+='<rect class="hit" data-i="'+i+'" x="'+(pad.l+i*bw)+'" y="'+pad.t+'" width="'+bw+'" height="'+ih+'" fill="transparent"/>'; });
   s+="</svg>";
   $("#ch-run").innerHTML=s;
+  barTips($("#ch-run"), W, cols);
 }
 
 function renderIntensity(inten, plan){
@@ -694,6 +729,24 @@ function renderIntensity(inten, plan){
     '<span>Lågt '+n1(inten.lo/3600)+' h</span><span>Hårt (Z3+) '+n1(inten.hi/3600)+' h</span></div>'+
     '<div style="font-size:12.5px;color:var(--faint);margin-top:8px">Z3 räknas som hårt arbete enligt polariserad modell.</div>';
 }
+
+function hm(h){ const H=Math.floor(h), M=Math.round((h-H)*60);
+  if(M===60) return (H+1)+":00"; return H+":"+String(M).padStart(2,"0"); }
+
+function barTips(el, W, cols){
+  el.classList.add("chart");
+  let tip=el.querySelector(".tip"); if(!tip){ tip=document.createElement("div"); tip.className="tip bar"; el.appendChild(tip); }
+  const svg=el.querySelector("svg"); let pinned=null;
+  function activate(i){ const o=cols[i]; if(!o) return;
+    tip.innerHTML=o.tip;
+    let lp=o.cx/W*100; const clamp=lp<18||lp>82; lp=Math.min(82,Math.max(18,lp));
+    tip.style.left=lp+"%"; tip.style.top="4%"; tip.classList.toggle("clamp",clamp); tip.classList.add("show"); }
+  function deactivate(){ tip.classList.remove("show"); }
+  el.querySelectorAll(".hit").forEach(h=>{ const i=+h.getAttribute("data-i");
+    h.addEventListener("click",e=>{ e.stopPropagation(); pinned=pinned===i?null:i; if(pinned===null) deactivate(); else activate(i); });
+    h.addEventListener("mouseenter",()=>{ if(pinned===null) activate(i); });
+    h.addEventListener("mouseleave",()=>{ if(pinned===null) deactivate(); }); });
+  if(svg) svg.addEventListener("click",()=>{ pinned=null; deactivate(); }); }
 
 function scatter(el, pts, opts){
   const W=320,H=150,pad={l:38,r:8,t:10,b:20}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
@@ -763,10 +816,23 @@ function renderEfficiency(ms){
   const cont=ms.filter(m=>m.gren==="swim"&&m.varde&&(m.done||m.plan)).map(m=>({d:m.done||m.plan, v:m.varde})).sort((a,b)=>a.d-b.d);
   let extra="";
   if(cont.length){ const mx=Math.max(...cont.map(c=>c.v));
-    extra='<div style="display:flex;gap:6px;align-items:flex-end;height:34px;margin-bottom:8px">'+
-      cont.map(c=>'<div title="'+dfmt(c.d)+' · '+Math.round(c.v)+' m" style="flex:1;max-width:34px;background:#244B5C;border-radius:3px 3px 0 0;height:'+Math.max(12,34*c.v/mx)+'px"></div>').join("")+
-      '</div><div style="font-size:11.5px;color:var(--faint);margin-bottom:6px">Längsta kontinuerligt: '+Math.round(Math.max(...cont.map(c=>c.v)))+' m</div>'; }
+    extra='<div class="chart swimbars" style="display:flex;gap:6px;align-items:flex-end;height:34px;margin-bottom:8px;position:relative">'+
+      cont.map(c=>'<div class="sb" data-tip="'+esc(dfmt(c.d)+' · '+Math.round(c.v)+' m')+'" style="flex:1;max-width:34px;background:#244B5C;border-radius:3px 3px 0 0;height:'+Math.max(12,34*c.v/mx)+'px;cursor:pointer"></div>').join("")+
+      '<div class="tip bar" style="top:auto;bottom:calc(100% + 6px)"></div></div>'+
+      '<div style="font-size:11.5px;color:var(--faint);margin-bottom:6px">Längsta kontinuerligt: '+Math.round(Math.max(...cont.map(c=>c.v)))+' m</div>'; }
   swimEl.innerHTML=extra+'<div id="ch-swim-pace"></div>';
+  const sbWrap=swimEl.querySelector(".swimbars");
+  if(sbWrap){ const tip=sbWrap.querySelector(".tip"); let pinned=null;
+    const bars=Array.prototype.slice.call(sbWrap.querySelectorAll(".sb"));
+    const act=(b)=>{ tip.textContent=b.getAttribute("data-tip");
+      const r=b.getBoundingClientRect(), wr=sbWrap.getBoundingClientRect();
+      let lp=(r.left+r.width/2-wr.left)/wr.width*100; const clamp=lp<18||lp>82; lp=Math.min(82,Math.max(18,lp));
+      tip.style.left=lp+"%"; tip.classList.toggle("clamp",clamp); tip.classList.add("show"); };
+    const deact=()=>tip.classList.remove("show");
+    bars.forEach((b,i)=>{ b.addEventListener("click",e=>{ e.stopPropagation(); pinned=pinned===i?null:i; pinned===null?deact():act(b); });
+      b.addEventListener("mouseenter",()=>{ if(pinned===null) act(b); });
+      b.addEventListener("mouseleave",()=>{ if(pinned===null) deact(); }); });
+    sbWrap.addEventListener("click",()=>{ pinned=null; deact(); }); }
   scatter($("#ch-swim-pace"), swim, {color:COLORS.swim, invert:true, yfmt:v=>paceFmt(v),
     empty:"Inga simpass i datan ännu."});
 }
@@ -866,6 +932,44 @@ function renderAll(ts){
   if(ts) $("#lastupd").textContent="Uppdaterad "+new Date(ts).toLocaleString("sv-SE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 }
 
+/* ============ Varumärke (inline SVG) ============ */
+const EMBLEM_FACETS=[
+  ["#56B4D3","#3E8AA3","M50.00,8.00 L10.00,84.00 L18.00,78.93 L50.00,18.13 Z","M50.00,18.13 L18.00,78.93 L26.00,73.87 L50.00,28.27 Z"],
+  ["#E2654F","#B44C3B","M50.00,8.00 L90.00,84.00 L82.00,78.93 L50.00,18.13 Z","M50.00,18.13 L82.00,78.93 L74.00,73.87 L50.00,28.27 Z"],
+  ["#E3B341","#B88C2E","M10.00,84.00 L90.00,84.00 L82.00,78.93 L18.00,78.93 Z","M18.00,78.93 L82.00,78.93 L74.00,73.87 L26.00,73.87 Z"]
+];
+function emblemSVG(){
+  let p="";
+  for(const [lt,dk,outer,inner] of EMBLEM_FACETS){
+    p+='<path d="'+outer+'" fill="'+lt+'"/><path d="'+inner+'" fill="'+dk+'"/>'; }
+  return '<svg viewBox="0 0 100 100" aria-hidden="true">'+p+'</svg>';
+}
+// Ordmärke: "TRIZON" + tre staplar som E (≡). textLength låser bredden så E:t hamnar rätt i alla webbläsare.
+function wordmarkSVG(h){
+  const fs=34, tl=150; // "TRIZON" fast bredd
+  const ex=tl+10, ew=26, et=5.5, gap=8.6; // E-staplarnas geometri
+  const bars=[0,1,2].map(i=>'<rect x="'+ex+'" y="'+(8.5+i*gap)+'" width="'+ew+'" height="'+et+'" rx="1" fill="#E9EEF5"/>').join("");
+  return '<svg viewBox="0 0 '+(ex+ew+2)+' 44" height="'+h+'" role="img" aria-label="TRIZONE">'+
+    '<text x="0" y="34" textLength="'+tl+'" lengthAdjust="spacingAndGlyphs" font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="'+fs+'" letter-spacing="1" fill="#E9EEF5">TRIZON</text>'+
+    bars+'</svg>';
+}
+function renderBrand(){
+  const br=$("#brandrow");
+  if(br) br.innerHTML=emblemSVG()+wordmarkSVG(30);
+  const sp=$("#splash");
+  if(sp&&!sp.dataset.built){ sp.dataset.built="1";
+    sp.innerHTML='<div style="display:flex;align-items:center;gap:14px">'+
+      '<div style="width:min(22vw,96px)">'+emblemSVG()+'</div>'+wordmarkSVG(40)+'</div>'+
+      '<div class="sub"><b style="color:var(--swim)">SWIM</b> · <b style="color:var(--bike)">BIKE</b> · <b style="color:var(--run)">RUN</b></div>'; }
+}
+function hideSplash(){ const sp=$("#splash"); if(!sp) return;
+  setTimeout(()=>{ sp.classList.add("hide"); setTimeout(()=>sp.remove(),500); }, 350); }
+
+/* ============ PWA ============ */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
+
 /* ============ Inställningar & start ============ */
 function loadCfg(){ try{ return JSON.parse(localStorage.getItem(CFG_KEY)); }catch(e){ return null; } }
 function openSettings(){ const c=cfg||{};
@@ -887,6 +991,8 @@ function showOnboarding(){
   $("#btn-onboard").addEventListener("click",openSettings); }
 
 function boot(){
+  renderBrand();
+  hideSplash();
   $("#btn-settings").addEventListener("click",openSettings);
   $("#btn-close").addEventListener("click",closeSettings);
   $("#btn-save").addEventListener("click",saveSettings);
