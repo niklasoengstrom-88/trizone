@@ -480,7 +480,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
       <div class="grid3">
         <div class="card">
           <div class="cardtitle" style="color:var(--bike)">Cykel</div>
-          <div class="cardsub">Snittwatt på pass med snittpuls 130–145 · ● = inomhus/wattkälla, ○ = utomhus</div>
+          <div class="cardsub">Snittwatt på pass med snittpuls 130–145, ≥30 min · ● = inomhus/wattkälla, ○ = utomhus</div>
           <div id="ch-bike"></div>
         </div>
         <div class="card">
@@ -490,7 +490,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
         </div>
         <div class="card">
           <div class="cardtitle" style="color:var(--swim)">Simning</div>
-          <div class="cardsub">Tempo /100 m per simpass · staplar = längsta kontinuerliga distans (från delmål)</div>
+          <div class="cardsub">Tempo /100 m per simpass (≥600 m) · staplar = längsta kontinuerliga distans (från delmål)</div>
           <div id="ch-swim"></div>
         </div>
       </div>
@@ -1049,23 +1049,26 @@ function scatter(el, pts, opts){
   el._dismiss=()=>{ pinned=null; deactivate(); };
 }
 
+/* Minimitrösklar för effektivitetspunkter — kort pass = puls hinner inte nå steady state = missvisande.
+   Justeras här per gren. */
+const EFF_MIN={ bike:{minSec:1800}, run:{minSec:1800}, swim:{minM:600} };
 function renderEfficiency(ms){
   const acts=data.activities.slice().sort((a,b)=>actDate(a)-actDate(b));
   const bike=acts.filter(a=>sportOf(a)==="bike").map(a=>{ const hr=actHR(a), w=actW(a), d=actDate(a);
-      return (d&&hr>=130&&hr<=145&&w>50)? {x:+d, y:w, hollow:!(a.trainer||/virtual/i.test(a.type||"")),
+      return (d&&hr>=130&&hr<=145&&w>50&&(a.moving_time||0)>=EFF_MIN.bike.minSec)? {x:+d, y:w, hollow:!(a.trainer||/virtual/i.test(a.type||"")),
         tip:dfmt(d)+" · "+Math.round(w)+" W @ "+Math.round(hr)+" bpm"} : null; }).filter(Boolean);
   scatter($("#ch-bike"), bike, {color:COLORS.bike, yfmt:v=>Math.round(v)+" W",
     emptyTitle:"Ingen wattbaserad trend än", emptyIcon:"trend",
     empty:"Kör ett par Z2-pass på spinningcykeln (eller med wattpedal) så ritas watt-vid-puls-trenden här."});
   const run=acts.filter(a=>sportOf(a)==="run").map(a=>{ const hr=actHR(a), d=actDate(a);
-      if(!d||!(hr>=124&&hr<=150)||(a.moving_time||0)<1800||!(a.distance>0)) return null;
+      if(!d||!(hr>=124&&hr<=150)||(a.moving_time||0)<EFF_MIN.run.minSec||!(a.distance>0)) return null;
       const pace=a.moving_time/(a.distance/1000);
       return {x:+d, y:pace, tip:dfmt(d)+" · "+paceFmt(pace)+"/km @ "+Math.round(hr)+" bpm"}; }).filter(Boolean);
   scatter($("#ch-runeff"), run, {color:COLORS.run, invert:true, yfmt:v=>paceFmt(v),
     emptyTitle:"Ingen löptrend än", emptyIcon:"trend",
     empty:"Två Z2-löppass på minst 30 min behövs innan tempo-vid-puls börjar säga något."});
   const swimEl=$("#ch-swim");
-  const swim=acts.filter(a=>sportOf(a)==="swim"&&a.distance>=400&&a.moving_time>0).map(a=>{ const d=actDate(a);
+  const swim=acts.filter(a=>sportOf(a)==="swim"&&a.distance>=EFF_MIN.swim.minM&&a.moving_time>0).map(a=>{ const d=actDate(a);
       const pace=100*a.moving_time/a.distance;
       return {x:+d, y:pace, tip:dfmt(d)+" · "+paceFmt(pace)+"/100 m · "+Math.round(a.distance)+" m"}; });
   const cont=ms.filter(m=>m.gren==="swim"&&m.varde&&(m.done||m.plan)).map(m=>({d:m.done||m.plan, v:m.varde})).sort((a,b)=>a.d-b.d);
