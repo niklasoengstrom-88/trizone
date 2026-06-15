@@ -148,6 +148,11 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 #ms-done{border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px; padding:6px 10px}
 
 /* ---------- Dagsform (PMC) ---------- */
+.spanchips{display:flex; gap:6px; justify-content:flex-end; margin:2px 0 6px}
+.spanchips button{background:var(--surface-lo); border:1px solid var(--line); color:var(--mut);
+  font-family:var(--disp); font-weight:600; font-size:12px; letter-spacing:.06em; text-transform:uppercase;
+  padding:5px 11px; border-radius:8px; cursor:pointer}
+.spanchips button.active{background:var(--surface-hi); color:var(--ink); border-color:#2E4A78}
 .formtop{display:flex; align-items:center; justify-content:space-between; gap:14px; margin:4px 0 10px}
 .formtsb{display:flex; align-items:center; gap:11px}
 .formtsb .fn{font-family:var(--disp); font-weight:700; font-size:46px; line-height:.9; font-variant-numeric:tabular-nums}
@@ -415,7 +420,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
       <h2>Belastning <small>senaste 12 veckorna</small></h2>
       <div class="card" style="margin-bottom:var(--s3)">
         <div class="cardtitle">Dagsform</div>
-        <div class="cardsub">Fitness, Fatigue och Form (TSB) från intervals.icu · senaste ~16 veckorna</div>
+        <div class="cardsub">Fitness, Fatigue och Form (TSB) från intervals.icu</div>
         <div id="ch-form"></div>
       </div>
       <div class="grid2">
@@ -613,8 +618,8 @@ async function refreshAll(){
   $("#btn-refresh").disabled=true; $("#btn-refresh").classList.add("spin");
   const t=today();
   const tasks={
-    activities: fetchIntervals("/activities?oldest="+iso(addDays(t,-120))+"&newest="+iso(addDays(t,1))),
-    wellness:   fetchIntervals("/wellness?oldest="+iso(addDays(t,-120))+"&newest="+iso(t)),
+    activities: fetchIntervals("/activities?oldest="+iso(addDays(t,-285))+"&newest="+iso(addDays(t,1))),
+    wellness:   fetchIntervals("/wellness?oldest="+iso(addDays(t,-285))+"&newest="+iso(t)),
     plan:       cfg.planUrl? fetchMaybeProxy(cfg.planUrl).then(r=>r.text()).then(parseCSV) : Promise.resolve([]),
     milestones: cfg.msUrl?   fetchMaybeProxy(cfg.msUrl).then(r=>r.text()).then(parseCSV)   : Promise.resolve([]),
     race:       cfg.raceUrl? fetchMaybeProxy(cfg.raceUrl).then(r=>r.text()).then(parseCSV) : Promise.resolve([])
@@ -958,7 +963,8 @@ function barTips(el, W, cols){
     h.addEventListener("click",e=>{ e.stopPropagation(); pinned=pinned===i?null:i; if(pinned===null) deactivate(); else activate(i); });
     h.addEventListener("mouseenter",()=>{ if(pinned===null) activate(i); });
     h.addEventListener("mouseleave",()=>{ if(pinned===null) deactivate(); }); });
-  if(svg) svg.addEventListener("click",()=>{ pinned=null; deactivate(); }); }
+  if(svg) svg.addEventListener("click",()=>{ pinned=null; deactivate(); });
+  el._dismiss=()=>{ pinned=null; deactivate(); }; }
 
 function scatter(el, pts, opts){
   const W=320,H=150,pad={l:38,r:8,t:12,b:22}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
@@ -1006,6 +1012,7 @@ function scatter(el, pts, opts){
     h.addEventListener("mouseenter",()=>{ if(pinned===null) activate(i); });
     h.addEventListener("mouseleave",()=>{ if(pinned===null) deactivate(); }); });
   svg.addEventListener("click",()=>{ pinned=null; deactivate(); });
+  el._dismiss=()=>{ pinned=null; deactivate(); };
 }
 
 function renderEfficiency(ms){
@@ -1173,6 +1180,7 @@ function toast(msg){
   clearTimeout(_toastT); _toastT=setTimeout(()=>el.classList.remove("show"), 1900);
 }
 let formSeg="belastning";
+let formSpan=90;
 function switchSeg(seg){
   formSeg=seg;
   document.querySelectorAll(".form-group").forEach(g=>g.hidden = g.getAttribute("data-seg")!==seg);
@@ -1287,9 +1295,11 @@ function renderForm(){
   for(const a of data.activities){ const d=actDate(a); if(!d) continue; const k=iso(d);
     const s=sportOf(a), o=byDay[k]||(byDay[k]={load:0,secs:{}});
     o.load+=(a.icu_training_load||0); o.secs[s]=(o.secs[s]||0)+(a.moving_time||0); }
-  const s=f.series.map(p=>{ const o=byDay[iso(p.d)];
+  const all=f.series.map(p=>{ const o=byDay[iso(p.d)];
     const sports=o? Object.entries(o.secs).sort((a,b)=>b[1]-a[1]).map(e=>e[0]) : [];
     return {d:p.d, ctl:p.ctl, atl:p.atl, load:o?o.load:0, sports}; });
+  const cut=addDays(today(),-formSpan);
+  const s = formSpan>=9000 ? all : all.filter(p=>p.d>=cut);
   const n=s.length;
   const W=460,H=180,pad={l:30,r:10,t:14,b:24}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
   const max=Math.max(10,...s.map(p=>Math.max(p.ctl,p.atl)))*1.1;
@@ -1329,6 +1339,10 @@ function renderForm(){
     cols.push({cx:X(i), tip:'<span class="h">'+dfmt(p.d)+'</span><br>Form '+sg+Math.round(tsb)+' · Fitness '+Math.round(p.ctl)+' · Fatigue '+Math.round(p.atl)+'<br>'+sess}); });
   svg+="</svg>";
   c.innerHTML=
+    '<div class="spanchips" id="form-span">'+
+      [[30,"1M"],[90,"3M"],[180,"6M"],[9999,"Säsong"]].map(o=>
+        '<button type="button" data-d="'+o[0]+'"'+(formSpan===o[0]?' class="active"':'')+'>'+o[1]+'</button>').join("")+
+    '</div>'+
     '<div class="formtop">'+
       '<div class="formtsb"><span class="fn" style="color:'+b.col+'">'+sign+Math.round(f.tsb)+'</span>'+
         '<span class="fl"><b style="color:'+b.col+'">'+b.label+'</b><span>Form (TSB)</span></span></div>'+
@@ -1342,6 +1356,8 @@ function renderForm(){
       '<span><i class="bar"></i>Belastning/dag (TSS, grenfärg)</span></div>'+
     '<p class="formnote">Negativ Form är meningen i bygg/peak — du lastar. Den ska klättra mot noll de sista 10–14 dagarna in i Holmsjö. Lita på benen före siffran.</p>';
   barTips($("#ch-form-svg"), W, cols);
+  $("#form-span").querySelectorAll("button").forEach(btn=>btn.addEventListener("click",()=>{
+    formSpan=+btn.getAttribute("data-d"); renderForm(); }));
 }
 
 function renderAll(ts){
@@ -1464,6 +1480,9 @@ function boot(){
   $("#brandrow").addEventListener("click",()=>setLogo(((cfg&&cfg.logoMode)||"full")==="full"?"emblem":"full"));
   $("#brandrow").style.cursor="pointer";
   $("#brandrow").title="Tryck för att växla logotyp";
+  document.addEventListener("pointerdown",e=>{
+    if(e.target.closest && e.target.closest(".chart")) return;
+    document.querySelectorAll(".chart").forEach(c=>{ if(c._dismiss) c._dismiss(); }); }, true);
   hideSplash();
   $("#btn-settings").addEventListener("click",openSettings);
   $("#btn-close").addEventListener("click",closeSettings);
