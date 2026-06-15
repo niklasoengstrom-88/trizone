@@ -18,7 +18,7 @@
 :root{
   --bg:#0C1320; --surface:#131C2C; --surface-hi:#1A2436; --surface-lo:#0F1726;
   --line:#1F2A3D; --line-soft:#172230;
-  --ink:#E9EEF5; --mut:#8B98AB; --faint:#5C687C;
+  --ink:#E9EEF5; --mut:#9AA7BA; --faint:#6E7C90;
   /* Grenfärger — används ENDAST för grendata */
   --swim:#56B4D3; --bike:#E3B341; --run:#E2654F; --strength:#9A8FD0;
   /* Funktionsfärger — frikopplade från grenfärgerna */
@@ -147,7 +147,19 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 .mshead[aria-expanded="true"]{color:var(--ink); border-radius:12px 12px 0 0; border-bottom-color:transparent}
 #ms-done{border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px; padding:6px 10px}
 
-/* ---------- Flagghistorik ---------- */
+/* ---------- Dagsform (PMC) ---------- */
+.formtop{display:flex; align-items:center; justify-content:space-between; gap:14px; margin:4px 0 10px}
+.formtsb{display:flex; align-items:center; gap:11px}
+.formtsb .fn{font-family:var(--disp); font-weight:700; font-size:46px; line-height:.9; font-variant-numeric:tabular-nums}
+.formtsb .fl{display:flex; flex-direction:column; line-height:1.25}
+.formtsb .fl b{font-size:15px}
+.formtsb .fl span{color:var(--faint); font-size:12px}
+.formkpis{display:flex; gap:18px; text-align:right}
+.formkpis .k{font-family:var(--disp); font-weight:700; font-size:24px; display:block; line-height:1; font-variant-numeric:tabular-nums}
+.formkpis .kl{color:var(--faint); font-size:11px; text-transform:uppercase; letter-spacing:.08em}
+.formlegend{display:flex; gap:16px; margin-top:6px; color:var(--mut); font-size:12px}
+.formlegend i{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle}
+.formnote{color:var(--faint); font-size:12px; line-height:1.45; margin:8px 0 0}
 #flaglog{margin-top:var(--s2)}
 #flaglog-body{border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px; padding:4px 12px}
 .flrow{display:flex; align-items:center; gap:10px; padding:9px 2px; border-top:1px solid var(--line-soft); font-size:13px}
@@ -218,6 +230,7 @@ svg{display:block; width:100%; height:auto}
 .wkrow .nm i{width:9px; height:9px; border-radius:3px; display:inline-block}
 .wkrow .val{font-variant-numeric:tabular-nums; text-align:right}
 .wkrow .delta{font-size:12px; color:var(--faint); margin-left:8px; font-variant-numeric:tabular-nums}
+.wkrow .wkload{font-size:12px; color:var(--accent); margin-right:10px; font-variant-numeric:tabular-nums; font-weight:600}
 
 /* ---------- Tomt läge / fel ---------- */
 .empty{color:var(--faint); font-size:13.5px; padding:8px 2px}
@@ -399,6 +412,11 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     <div class="form-group" data-seg="belastning">
     <section id="sec-belastning">
       <h2>Belastning <small>senaste 12 veckorna</small></h2>
+      <div class="card" style="margin-bottom:var(--s3)">
+        <div class="cardtitle">Dagsform</div>
+        <div class="cardsub">Fitness, Fatigue och Form (TSB) från intervals.icu · senaste ~16 veckorna</div>
+        <div id="ch-form"></div>
+      </div>
       <div class="grid2">
         <div class="card">
           <div class="cardtitle">Veckovolym per gren</div>
@@ -595,7 +613,7 @@ async function refreshAll(){
   const t=today();
   const tasks={
     activities: fetchIntervals("/activities?oldest="+iso(addDays(t,-120))+"&newest="+iso(addDays(t,1))),
-    wellness:   fetchIntervals("/wellness?oldest="+iso(addDays(t,-45))+"&newest="+iso(t)),
+    wellness:   fetchIntervals("/wellness?oldest="+iso(addDays(t,-120))+"&newest="+iso(t)),
     plan:       cfg.planUrl? fetchMaybeProxy(cfg.planUrl).then(r=>r.text()).then(parseCSV) : Promise.resolve([]),
     milestones: cfg.msUrl?   fetchMaybeProxy(cfg.msUrl).then(r=>r.text()).then(parseCSV)   : Promise.resolve([]),
     race:       cfg.raceUrl? fetchMaybeProxy(cfg.raceUrl).then(r=>r.text()).then(parseCSV) : Promise.resolve([])
@@ -643,12 +661,13 @@ function currentPhase(plan){ const t=today();
 
 function weeklyAgg(nWeeks){
   const t=today(), w0=monday(t), weeks=[];
-  for(let i=nWeeks-1;i>=0;i--){ weeks.push({start:addDays(w0,-7*i), vol:{swim:0,bike:0,run:0,strength:0,other:0}, runKm:0}); }
+  for(let i=nWeeks-1;i>=0;i--){ weeks.push({start:addDays(w0,-7*i), vol:{swim:0,bike:0,run:0,strength:0,other:0}, runKm:0, load:0}); }
   const idx=new Map(weeks.map((w,i)=>[iso(w.start),i]));
   for(const a of data.activities){ const d=actDate(a); if(!d) continue;
     const k=iso(monday(d)); if(!idx.has(k)) continue;
     const w=weeks[idx.get(k)], s=sportOf(a);
     w.vol[s]+=(a.moving_time||0)/3600;
+    w.load+=(a.icu_training_load||0);
     if(s==="run") w.runKm+=(a.distance||0)/1000; }
   weeks.forEach((w,i)=>{ const prev=weeks.slice(Math.max(0,i-3),i).map(x=>x.runKm);
     w.cap = prev.length===3 ? 1.1*(prev[0]+prev[1]+prev[2])/3 : null; });
@@ -1038,7 +1057,7 @@ function fmtH(h){ const H=Math.floor(h), M=Math.round((h-H)*60);
 function weekSummary(){
   const t=today(), w0=monday(t), w1=addDays(w0,7), p0=addDays(w0,-7);
   const cur={}, prev={}, days=Array.from({length:7},()=>[]);
-  const add=(o,s,a)=>{ o[s]=o[s]||{t:0,km:0,n:0}; o[s].t+=(a.moving_time||0)/3600; o[s].km+=(a.distance||0)/1000; o[s].n++; };
+  const add=(o,s,a)=>{ o[s]=o[s]||{t:0,km:0,n:0,load:0}; o[s].t+=(a.moving_time||0)/3600; o[s].km+=(a.distance||0)/1000; o[s].n++; o[s].load+=(a.icu_training_load||0); };
   for(const a of data.activities){ const d=actDate(a); if(!d) continue;
     const s=sportOf(a);
     if(d>=w0&&d<w1){ add(cur,s,a); const i=Math.round((d-w0)/DAY);
@@ -1062,9 +1081,9 @@ function renderWeek(ws){
       : '<span class="dot" style="background:'+(COLORS[s]||COLORS.other)+'"></span>').join("");
     return '<div class="'+cls+'"><span class="lbl">'+l+'</span><span class="cell">'+(dots||'<span class="none"></span>')+'</span></div>'; }).join("");
   const order=["swim","bike","run","strength","other"];
-  let rows="", tot=0, ptot=0, totN=0, first=true;
+  let rows="", tot=0, ptot=0, totN=0, totLoad=0, pLoad=0, first=true;
   for(const s of order){ const c=ws.cur[s], p=ws.prev[s]; if(!c&&!p) continue;
-    const ct=c?c.t:0, pt=p?p.t:0; tot+=ct; ptot+=pt; totN+=c?c.n:0;
+    const ct=c?c.t:0, pt=p?p.t:0; tot+=ct; ptot+=pt; totN+=c?c.n:0; totLoad+=c?c.load:0; pLoad+=p?p.load:0;
     let val=c? fmtH(ct) : "–";
     if(c&&s==="swim"&&c.km>0) val+=" · "+Math.round(c.km*1000)+" m";
     else if(c&&c.km>0.1&&s!=="strength") val+=" · "+n1(c.km)+" km";
@@ -1074,7 +1093,8 @@ function renderWeek(ws){
     first=false; }
   if(!rows) rows=emptyState("Inga pass den här veckan än","Första passet dyker upp så fort klockan synkat mot intervals.icu.","bars");
   else { const d=tot-ptot, dTxt=Math.abs(d)<0.017? "±0" : (d>0?"▲ ":"▼ ")+fmtH(Math.abs(d));
-    rows+='<div class="wkrow total"><span class="nm">Totalt <span style="color:var(--faint)">×'+totN+'</span></span><span class="val">'+fmtH(tot)+'<span class="delta">'+dTxt+'</span></span></div>'; }
+    const loadTxt = totLoad>0 ? '<span class="wkload">'+Math.round(totLoad)+' TSS</span>' : '';
+    rows+='<div class="wkrow total"><span class="nm">Totalt <span style="color:var(--faint)">×'+totN+'</span></span><span class="val">'+loadTxt+fmtH(tot)+'<span class="delta">'+dTxt+'</span></span></div>'; }
   $("#weektable").innerHTML=rows; }
 
 function buildReport(){
@@ -1083,14 +1103,14 @@ function buildReport(){
   const ws=weekSummary(), t=today();
   const L=["TRIZONE veckorapport v"+weekNo(ws.w0)+" ("+dfmt(ws.w0)+"–"+dfmt(addDays(ws.w0,6))+", t.o.m. idag "+dfmt(t)+")"];
   const order=["swim","bike","run","strength","other"];
-  let tot=0, totN=0;
-  for(const s of order){ const c=ws.cur[s]; if(!c) continue; tot+=c.t; totN+=c.n;
+  let tot=0, totN=0, totLoad=0;
+  for(const s of order){ const c=ws.cur[s]; if(!c) continue; tot+=c.t; totN+=c.n; totLoad+=c.load||0;
     let line=SPORT_LABEL[s]+": "+c.n+" pass · "+fmtH(c.t);
     if(s==="swim"&&c.km>0) line+=" · "+Math.round(c.km*1000)+" m";
     else if(c.km>0.1&&s!=="strength") line+=" · "+n1(c.km)+" km";
     const p=ws.prev[s]; line+=" (förra veckan: "+(p? fmtH(p.t):"0")+")";
     L.push(line); }
-  L.push("Totalt: "+totN+" pass · "+fmtH(tot));
+  L.push("Totalt: "+totN+" pass · "+fmtH(tot)+(totLoad>0? " · "+Math.round(totLoad)+" TSS":""));
   const cw=weeks[weeks.length-1];
   if(cw&&cw.cap!=null) L.push("Löpvolym: "+n1(cw.runKm)+" km av tak "+n1(cw.cap)+" km (110 %-regeln)");
   if(inten){ const ph=currentPhase(plan);
@@ -1242,6 +1262,60 @@ function renderNextKey(){
   c.querySelector(".nextkey").addEventListener("click",()=>switchTab("plan"));
 }
 
+/* ============ Dagsform: Fitness (CTL) / Fatigue (ATL) / Form (TSB) ============ */
+function computeForm(){
+  const rows=data.wellness.map(w=>({d:pd(w.id), ctl:w.ctl, atl:w.atl}))
+    .filter(x=>x.d && x.ctl!=null && x.atl!=null).sort((a,b)=>a.d-b.d);
+  if(!rows.length) return null;
+  const last=rows[rows.length-1];
+  return { ctl:last.ctl, atl:last.atl, tsb:last.ctl-last.atl, series:rows };
+}
+function tsbBand(tsb){
+  if(tsb>5)   return {label:"Fräsch",  col:"var(--ok)"};
+  if(tsb>=-10)return {label:"Neutral", col:"var(--accent)"};
+  if(tsb>=-25)return {label:"Lastad",  col:"var(--warn)"};
+  return            {label:"Tung",    col:"var(--risk)"};
+}
+function renderForm(){
+  const c=$("#ch-form"); if(!c) return;
+  const f=computeForm();
+  if(!f){ c.innerHTML=emptyState("Ingen formdata än","Fitness, Fatigue och Form hämtas från intervals.icu så snart wellness-data finns där.","zones"); return; }
+  const b=tsbBand(f.tsb), sign=f.tsb>0?"+":"";
+  // PMC: CTL (yta) + ATL (linje), samma skala
+  const W=460,H=170,pad={l:30,r:10,t:14,b:22}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  const s=f.series, n=s.length;
+  const max=Math.max(10,...s.map(p=>Math.max(p.ctl,p.atl)))*1.1;
+  const X=i=>pad.l+iw*(n<2?0.5:i/(n-1)), Y=v=>pad.t+ih-ih*v/max;
+  let svg=svgOpen(W,H);
+  for(const gv of [Math.round(max/2), Math.round(max)]){
+    svg+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+Y(gv)+'" y2="'+Y(gv)+'" stroke="#19232F"/>';
+    svg+=txt(pad.l-5,Y(gv)+3,gv,"#5C687C",9,"end"); }
+  svg+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+(pad.t+ih)+'" y2="'+(pad.t+ih)+'" stroke="#243140"/>';
+  // CTL yta
+  let area="M"+X(0)+","+(pad.t+ih);
+  s.forEach((p,i)=>area+=" L"+X(i).toFixed(1)+","+Y(p.ctl).toFixed(1));
+  area+=" L"+X(n-1)+","+(pad.t+ih)+" Z";
+  svg+='<path d="'+area+'" fill="var(--accent)" opacity="0.14"/>';
+  let ctlL="", atlL="";
+  s.forEach((p,i)=>{ ctlL+=(i?" L":"M")+X(i).toFixed(1)+","+Y(p.ctl).toFixed(1);
+                     atlL+=(i?" L":"M")+X(i).toFixed(1)+","+Y(p.atl).toFixed(1); });
+  svg+='<path d="'+atlL+'" fill="none" stroke="var(--warn)" stroke-width="1.6" opacity="0.85"/>';
+  svg+='<path d="'+ctlL+'" fill="none" stroke="var(--accent)" stroke-width="2"/>';
+  svg+="</svg>";
+  c.innerHTML=
+    '<div class="formtop">'+
+      '<div class="formtsb"><span class="fn" style="color:'+b.col+'">'+sign+Math.round(f.tsb)+'</span>'+
+        '<span class="fl"><b style="color:'+b.col+'">'+b.label+'</b><span>Form (TSB)</span></span></div>'+
+      '<div class="formkpis">'+
+        '<div><span class="k">'+Math.round(f.ctl)+'</span><span class="kl">Fitness</span></div>'+
+        '<div><span class="k">'+Math.round(f.atl)+'</span><span class="kl">Fatigue</span></div></div>'+
+    '</div>'+
+    svg+
+    '<div class="formlegend"><span><i style="background:var(--accent)"></i>Fitness (CTL)</span>'+
+      '<span><i style="background:var(--warn)"></i>Fatigue (ATL)</span></div>'+
+    '<p class="formnote">Negativ Form är meningen i bygg/peak — du lastar. Den ska klättra mot noll de sista 10–14 dagarna in i Holmsjö. Lita på benen före siffran.</p>';
+}
+
 function renderAll(ts){
   const plan=getPlan(), ms=getMilestones(), weeks=weeklyAgg(12), inten=intensity14();
   renderHeader(plan);
@@ -1256,6 +1330,7 @@ function renderAll(ts){
   renderVolume(weeks, plan);
   renderRun(weeks);
   renderIntensity(inten, plan);
+  renderForm();
   renderEfficiency(ms);
   renderWeek(weekSummary());
   $("#sec-vecka").hidden=false;
