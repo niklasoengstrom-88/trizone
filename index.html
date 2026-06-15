@@ -1482,14 +1482,22 @@ function renderAll(ts){
 /* ============ Varumärke (inline SVG) ============ */
 /* Kanoniskt emblem — öppen triangel, tre rena färgband (cyan/röd/guld).
    Samma geometri används i header, splash OCH ikonerna (PIL). En triangel överallt. */
-const EMBLEM_BANDS=[
-  ["#56B4D3","M50,8 L8,86 L31.52,71.44 L50,37.12 Z"],   // swim — vänster
-  ["#E2654F","M50,8 L92,86 L68.48,71.44 L50,37.12 Z"],   // run — höger
-  ["#E3B341","M8,86 L92,86 L68.48,71.44 L31.52,71.44 Z"] // bike — botten
+/* Kanoniskt emblem — V4a "Adaptive Spiral": tre bågar på krympande radie, asymmetrisk spiralrörelse,
+   tom mitt, rundade ändar. Samma grenfärger som datan. Samma geometri i header, splash OCH ikonerna. */
+const EMBLEM_ARCS=[
+  ["#56B4D3", 42, 152, 288],  // swim — yttersta
+  ["#E3B341", 36, 286, 418],  // bike — mitten
+  ["#E2654F", 30,  56, 182]   // run  — innersta
 ];
+function emblemArcPath(R,a0,a1){
+  const T=Math.PI/180, pt=(r,d)=>[(50+r*Math.cos(d*T)).toFixed(2),(50+r*Math.sin(d*T)).toFixed(2)];
+  const s=pt(R,a0), e=pt(R,a1), large=(Math.abs(a1-a0)>180?1:0);
+  return "M "+s[0]+" "+s[1]+" A "+R+" "+R+" 0 "+large+" 1 "+e[0]+" "+e[1];
+}
 function emblemSVG(){
   let p="";
-  for(const [col,d] of EMBLEM_BANDS) p+='<path d="'+d+'" fill="'+col+'"/>';
+  for(const [col,R,a0,a1] of EMBLEM_ARCS)
+    p+='<path d="'+emblemArcPath(R,a0,a1)+'" fill="none" stroke="'+col+'" stroke-width="14" stroke-linecap="round"/>';
   return '<svg viewBox="0 0 100 100" aria-hidden="true">'+p+'</svg>';
 }
 // Ordmärke: "TRIZON" + tre staplar som E (≡). textLength låser bredden så E:t hamnar rätt i alla webbläsare.
