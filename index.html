@@ -33,6 +33,7 @@
 }
 *{box-sizing:border-box; margin:0; padding:0}
 html{color-scheme:dark}
+html,body{overflow-x:hidden; max-width:100%}
 body{background:var(--bg); color:var(--ink); font-family:var(--body); font-size:15px; line-height:1.5;
   -webkit-font-smoothing:antialiased; padding-bottom:calc(64px + env(safe-area-inset-bottom));
   font-variant-numeric:tabular-nums}
@@ -162,12 +163,24 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 .formkpis{display:flex; gap:18px; text-align:right}
 .formkpis .k{font-family:var(--disp); font-weight:700; font-size:24px; display:block; line-height:1; font-variant-numeric:tabular-nums}
 .formkpis .kl{color:var(--faint); font-size:11px; text-transform:uppercase; letter-spacing:.08em}
-.formrecov{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0 0 10px; padding:8px 11px;
-  background:var(--surface-lo); border:1px solid var(--line); border-radius:9px; font-size:12.5px; color:var(--mut)}
+.formrecov{display:flex; flex-wrap:wrap; align-items:center; gap:8px; width:100%; text-align:left;
+  margin:0 0 10px; padding:9px 12px; background:var(--surface-lo); border:1px solid var(--line);
+  border-radius:9px; font-size:12.5px; color:var(--mut); cursor:pointer}
+.formrecov:hover{border-color:#26344A}
+.formrecov .recov-metrics{display:flex; flex-wrap:wrap; align-items:center; gap:8px; flex:1}
+.formrecov .recov-i{color:var(--accent); flex:0 0 auto; font-size:14px}
 .formrecov b{color:var(--ink); font-weight:600}
 .formrecov .b{color:var(--faint); font-weight:400}
 .formrecov .warn b{color:var(--warn)}
 .formrecov .sep{color:var(--faint); opacity:.6}
+.formrecov-info{margin:-4px 0 12px; padding:11px 13px; background:var(--surface-lo); border:1px solid var(--line);
+  border-radius:9px; font-size:12.5px; color:var(--mut); line-height:1.5}
+.formrecov-info .recov-head{font-family:var(--disp); font-weight:600; font-size:11px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--faint); margin-bottom:6px}
+.formrecov-info ul{margin:0 0 6px; padding-left:18px}
+.formrecov-info li{margin:2px 0}
+.formrecov-info p{margin:6px 0 0; color:var(--ink)}
+.formrecov-info .recov-fine{color:var(--faint); font-size:11.5px; margin-top:8px}
 .editsheet{display:inline-block; margin-top:var(--s3); padding:9px 14px; border:1px solid var(--line);
   border-radius:10px; background:var(--surface); color:var(--accent); font-size:13px; text-decoration:none;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
@@ -209,7 +222,7 @@ svg{display:block; width:100%; height:auto}
 .chart{position:relative}
 .tip{position:absolute; pointer-events:none; z-index:6; background:rgba(12,18,28,.72); border:1px solid rgba(91,147,230,.28);
   -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px);
-  border-radius:9px; padding:6px 10px; font-size:11.5px; color:var(--ink); white-space:nowrap;
+  border-radius:9px; padding:6px 10px; font-size:11.5px; color:var(--ink); white-space:normal; max-width:min(72vw,280px);
   transform:translate(-50%,calc(-100% - 9px)); box-shadow:0 6px 20px rgba(0,0,0,.5); opacity:0; transition:opacity .1s}
 .tip.show{opacity:1}
 .tip.below{transform:translate(-50%,11px)}
@@ -217,7 +230,9 @@ svg{display:block; width:100%; height:auto}
   border:5px solid transparent; border-top-color:#0A1018}
 .tip.below::after{top:-5px; bottom:auto; border-top-color:transparent; border-bottom-color:#0A1018}
 .tip.clamp::after{display:none}
-.tip.bar{transform:translate(-50%,0); white-space:nowrap; line-height:1.5}
+.tip.bar{transform:translate(-50%,0); white-space:normal; line-height:1.5}
+.tip.bar.anchL{transform:translate(0,0)}
+.tip.bar.anchR{transform:translate(-100%,0)}
 .tip.bar::after{display:none}
 .tip.bar .h{color:var(--mut); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase}
 .hit{cursor:pointer}
@@ -972,8 +987,11 @@ function barTips(el, W, cols){
   const svg=el.querySelector("svg"); let pinned=null;
   function activate(i){ const o=cols[i]; if(!o) return;
     tip.innerHTML=o.tip;
-    let lp=o.cx/W*100; const clamp=lp<18||lp>82; lp=Math.min(82,Math.max(18,lp));
-    tip.style.left=lp+"%"; tip.style.top="4%"; tip.classList.toggle("clamp",clamp); tip.classList.add("show"); }
+    const pct=o.cx/W*100;
+    tip.classList.remove("anchL","anchR");
+    if(pct>66) tip.classList.add("anchR");
+    else if(pct<34) tip.classList.add("anchL");
+    tip.style.left=pct+"%"; tip.style.top="4%"; tip.classList.add("show"); }
   function deactivate(){ tip.classList.remove("show"); }
   el.querySelectorAll(".hit").forEach(h=>{ const i=+h.getAttribute("data-i");
     h.addEventListener("click",e=>{ e.stopPropagation(); pinned=pinned===i?null:i; if(pinned===null) deactivate(); else activate(i); });
@@ -1299,13 +1317,27 @@ function recoveryStrip(){
   const r=computeRecovery();
   if(!r) return "";
   const parts=[];
-  if(r.sleepAvg!=null){ const low=r.sleepAvg<6.2;
-    parts.push('<span'+(low?' class="warn"':'')+'>Sömn 3 nätter: <b>'+n1(r.sleepAvg)+' h</b></span>'); }
-  if(r.recentRhr!=null){ const hi=r.baseRhr!=null && r.recentRhr>r.baseRhr+5;
-    parts.push('<span'+(hi?' class="warn"':'')+'>Vilopuls: <b>'+r.recentRhr+'</b>'+(r.baseRhr!=null? ' <span class="b">(baslinje '+r.baseRhr+')</span>':'')+'</span>'); }
-  if(r.recentHrv!=null) parts.push('<span>HRV: <b>'+r.recentHrv+' ms</b></span>');
+  if(r.sleepAvg!=null) parts.push('<span'+(r.flags.sleep?' class="warn"':'')+'>Sömn 3 nätter: <b>'+n1(r.sleepAvg)+' h</b></span>');
+  if(r.recentRhr!=null) parts.push('<span'+(r.flags.rhr?' class="warn"':'')+'>Vilopuls: <b>'+r.recentRhr+'</b>'+(r.baseRhr!=null? ' <span class="b">(baslinje '+r.baseRhr+')</span>':'')+'</span>');
+  if(r.recentHrv!=null) parts.push('<span'+(r.flags.hrv?' class="warn"':'')+'>HRV: <b>'+r.recentHrv+' ms</b>'+(r.baseHrv!=null? ' <span class="b">(baslinje '+r.baseHrv+')</span>':'')+'</span>');
   if(!parts.length) return "";
-  return '<div class="formrecov">'+parts.join('<span class="sep">·</span>')+'</div>';
+  // Förklaring (plain language + coach-läsning)
+  const notes=[];
+  if(r.flags.sleep) notes.push("Sömnen ligger under ~6,5 h i snitt — återhämtningen är inte komplett.");
+  if(r.flags.rhr)   notes.push("Vilopulsen är förhöjd mot din baslinje, ofta ett tecken på trötthet, stress eller begynnande infektion.");
+  if(r.flags.hrv)   notes.push("HRV ligger under din baslinje, vilket pekar på kvarvarande belastning på nervsystemet.");
+  const anyFlag=r.flags.sleep||r.flags.rhr||r.flags.hrv;
+  const read = anyFlag
+    ? "Sammantaget: kroppen är inte fullt laddad. Det förklarar varför Form kan kännas tyngre än siffran. Lägg dagens pass lugnt, eller flytta kvalitet till du sovit ikapp."
+    : "Markörerna ser bra ut — grönt ljus för kvalitet om benen känns pigga.";
+  const explain = '<div class="recov-head">Vad markörerna säger</div>'+
+    (notes.length? '<ul>'+notes.map(x=>'<li>'+x+'</li>').join("")+'</ul>' : "")+
+    '<p>'+read+'</p>'+
+    '<p class="recov-fine">Baslinjer är dina egna 30-dagarssnitt. Detta är vägledning, inte diagnos — lita på hur du faktiskt mår.</p>';
+  return '<button type="button" class="formrecov" id="recov-btn" aria-expanded="false">'+
+      '<span class="recov-metrics">'+parts.join('<span class="sep">·</span>')+'</span>'+
+      '<span class="recov-i" aria-hidden="true">ⓘ</span></button>'+
+    '<div class="formrecov-info" id="recov-info" hidden>'+explain+'</div>';
 }
 function computeRecovery(){
   const w=data.wellness.map(x=>({d:pd(x.id), sleep:x.sleepSecs, hrv:x.hrv, rhr:x.restingHR??x.resting_hr}))
@@ -1315,11 +1347,16 @@ function computeRecovery(){
   const sleepAvg = sleeps.length? sleeps.reduce((a,b)=>a+b,0)/sleeps.length/3600 : null;
   const rhrs=w.filter(x=>x.rhr>0);
   const recentRhr = rhrs.length? rhrs[rhrs.length-1].rhr : null;
-  const base = rhrs.slice(-30); const baseRhr = base.length? Math.round(base.reduce((a,b)=>a+b.rhr,0)/base.length) : null;
+  const baseR = rhrs.slice(-30); const baseRhr = baseR.length>=5? Math.round(baseR.reduce((a,b)=>a+b.rhr,0)/baseR.length) : null;
   const hrvs=w.filter(x=>x.hrv>0);
   const recentHrv = hrvs.length? Math.round(hrvs[hrvs.length-1].hrv) : null;
+  const baseH = hrvs.slice(-30); const baseHrv = baseH.length>=7? Math.round(baseH.reduce((a,b)=>a+b.hrv,0)/baseH.length) : null;
   const has = sleepAvg!=null||recentRhr!=null||recentHrv!=null;
-  return has? {sleepAvg, recentRhr, baseRhr, recentHrv} : null;
+  if(!has) return null;
+  const flags={ sleep: sleepAvg!=null && sleepAvg<6.2,
+                rhr: baseRhr!=null && recentRhr>baseRhr+5,
+                hrv: baseHrv!=null && recentHrv<baseHrv*0.9 };
+  return {sleepAvg, recentRhr, baseRhr, recentHrv, baseHrv, flags};
 }
 function tsbBand(tsb){
   if(tsb>5)   return {label:"Fräsch",  col:"var(--ok)"};
@@ -1401,6 +1438,10 @@ function renderForm(){
   barTips($("#ch-form-svg"), W, cols);
   $("#form-span").querySelectorAll("button").forEach(btn=>btn.addEventListener("click",()=>{
     formSpan=+btn.getAttribute("data-d"); renderForm(); }));
+  const rb=$("#recov-btn"); if(rb) rb.addEventListener("click",()=>{
+    const info=$("#recov-info"); const open=info.hasAttribute("hidden");
+    if(open) info.removeAttribute("hidden"); else info.setAttribute("hidden","");
+    rb.setAttribute("aria-expanded", open?"true":"false"); });
 }
 
 function renderAll(ts){
