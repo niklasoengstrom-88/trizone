@@ -1050,18 +1050,23 @@ function scatter(el, pts, opts){
 }
 
 /* Minimitrösklar för effektivitetspunkter — kort pass = puls hinner inte nå steady state = missvisande.
-   Justeras här per gren. */
-const EFF_MIN={ bike:{minSec:1800}, run:{minSec:1800}, swim:{minM:600} };
+   steadyLoFrac: minst denna andel av tiden i Z1–Z2 för att räknas som jämnt aerobt pass (sållar bort intervaller). */
+const EFF_MIN={ bike:{minSec:1800}, run:{minSec:1800}, swim:{minM:600}, steadyLoFrac:0.80 };
+function isSteady(a){
+  const z=zones(a); if(!z||!z.length) return true;            // ingen zondata → låt durationsfiltret avgöra
+  let lo=(z[0]||0)+(z[1]||0), tot=0; for(const v of z) tot+=v||0;
+  return tot>0 ? lo/tot >= EFF_MIN.steadyLoFrac : true;
+}
 function renderEfficiency(ms){
   const acts=data.activities.slice().sort((a,b)=>actDate(a)-actDate(b));
   const bike=acts.filter(a=>sportOf(a)==="bike").map(a=>{ const hr=actHR(a), w=actW(a), d=actDate(a);
-      return (d&&hr>=130&&hr<=145&&w>50&&(a.moving_time||0)>=EFF_MIN.bike.minSec)? {x:+d, y:w, hollow:!(a.trainer||/virtual/i.test(a.type||"")),
+      return (d&&hr>=130&&hr<=145&&w>50&&(a.moving_time||0)>=EFF_MIN.bike.minSec&&isSteady(a))? {x:+d, y:w, hollow:!(a.trainer||/virtual/i.test(a.type||"")),
         tip:dfmt(d)+" · "+Math.round(w)+" W @ "+Math.round(hr)+" bpm"} : null; }).filter(Boolean);
   scatter($("#ch-bike"), bike, {color:COLORS.bike, yfmt:v=>Math.round(v)+" W",
     emptyTitle:"Ingen wattbaserad trend än", emptyIcon:"trend",
     empty:"Kör ett par Z2-pass på spinningcykeln (eller med wattpedal) så ritas watt-vid-puls-trenden här."});
   const run=acts.filter(a=>sportOf(a)==="run").map(a=>{ const hr=actHR(a), d=actDate(a);
-      if(!d||!(hr>=124&&hr<=150)||(a.moving_time||0)<EFF_MIN.run.minSec||!(a.distance>0)) return null;
+      if(!d||!(hr>=124&&hr<=150)||(a.moving_time||0)<EFF_MIN.run.minSec||!(a.distance>0)||!isSteady(a)) return null;
       const pace=a.moving_time/(a.distance/1000);
       return {x:+d, y:pace, tip:dfmt(d)+" · "+paceFmt(pace)+"/km @ "+Math.round(hr)+" bpm"}; }).filter(Boolean);
   scatter($("#ch-runeff"), run, {color:COLORS.run, invert:true, yfmt:v=>paceFmt(v),
