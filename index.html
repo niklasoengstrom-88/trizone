@@ -159,6 +159,7 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 .formkpis .kl{color:var(--faint); font-size:11px; text-transform:uppercase; letter-spacing:.08em}
 .formlegend{display:flex; gap:16px; margin-top:6px; color:var(--mut); font-size:12px}
 .formlegend i{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle}
+.formlegend i.bar{width:5px; height:11px; border-radius:1px; background:linear-gradient(var(--swim),var(--run)); opacity:.6}
 .formnote{color:var(--faint); font-size:12px; line-height:1.45; margin:8px 0 0}
 #flaglog{margin-top:var(--s2)}
 #flaglog-body{border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px; padding:4px 12px}
@@ -1281,26 +1282,51 @@ function renderForm(){
   const f=computeForm();
   if(!f){ c.innerHTML=emptyState("Ingen formdata än","Fitness, Fatigue och Form hämtas från intervals.icu så snart wellness-data finns där.","zones"); return; }
   const b=tsbBand(f.tsb), sign=f.tsb>0?"+":"";
-  // PMC: CTL (yta) + ATL (linje), samma skala
-  const W=460,H=170,pad={l:30,r:10,t:14,b:22}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
-  const s=f.series, n=s.length;
+  // Daglig belastning per datum (TSS + grenfördelning)
+  const byDay={};
+  for(const a of data.activities){ const d=actDate(a); if(!d) continue; const k=iso(d);
+    const s=sportOf(a), o=byDay[k]||(byDay[k]={load:0,secs:{}});
+    o.load+=(a.icu_training_load||0); o.secs[s]=(o.secs[s]||0)+(a.moving_time||0); }
+  const s=f.series.map(p=>{ const o=byDay[iso(p.d)];
+    const sports=o? Object.entries(o.secs).sort((a,b)=>b[1]-a[1]).map(e=>e[0]) : [];
+    return {d:p.d, ctl:p.ctl, atl:p.atl, load:o?o.load:0, sports}; });
+  const n=s.length;
+  const W=460,H=180,pad={l:30,r:10,t:14,b:24}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
   const max=Math.max(10,...s.map(p=>Math.max(p.ctl,p.atl)))*1.1;
+  const maxLoad=Math.max(1,...s.map(p=>p.load));
   const X=i=>pad.l+iw*(n<2?0.5:i/(n-1)), Y=v=>pad.t+ih-ih*v/max;
+  const step=n<2?iw:iw/(n-1), barW=Math.max(1.6, step*0.62);
   let svg=svgOpen(W,H);
   for(const gv of [Math.round(max/2), Math.round(max)]){
     svg+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+Y(gv)+'" y2="'+Y(gv)+'" stroke="#19232F"/>';
-    svg+=txt(pad.l-5,Y(gv)+3,gv,"#5C687C",9,"end"); }
+    svg+=txt(pad.l-5,Y(gv)+3,gv,"#6E7C90",9,"end"); }
   svg+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+(pad.t+ih)+'" y2="'+(pad.t+ih)+'" stroke="#243140"/>';
-  // CTL yta
-  let area="M"+X(0)+","+(pad.t+ih);
+  // CTL-yta
+  let area="M"+X(0).toFixed(1)+","+(pad.t+ih);
   s.forEach((p,i)=>area+=" L"+X(i).toFixed(1)+","+Y(p.ctl).toFixed(1));
-  area+=" L"+X(n-1)+","+(pad.t+ih)+" Z";
-  svg+='<path d="'+area+'" fill="var(--accent)" opacity="0.14"/>';
+  area+=" L"+X(n-1).toFixed(1)+","+(pad.t+ih)+" Z";
+  svg+='<path d="'+area+'" fill="var(--accent)" opacity="0.12"/>';
+  // Dagliga belastningsstaplar (grenfärg, bakom linjerna)
+  s.forEach((p,i)=>{ if(p.load<=0) return;
+    const h=ih*0.70*p.load/maxLoad, col=COLORS[p.sports[0]]||COLORS.other;
+    svg+='<rect x="'+(X(i)-barW/2).toFixed(1)+'" y="'+(pad.t+ih-h).toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+h.toFixed(1)+'" fill="'+col+'" opacity="0.30" rx="0.8"/>'; });
+  // ATL + CTL linjer
   let ctlL="", atlL="";
   s.forEach((p,i)=>{ ctlL+=(i?" L":"M")+X(i).toFixed(1)+","+Y(p.ctl).toFixed(1);
                      atlL+=(i?" L":"M")+X(i).toFixed(1)+","+Y(p.atl).toFixed(1); });
-  svg+='<path d="'+atlL+'" fill="none" stroke="var(--warn)" stroke-width="1.6" opacity="0.85"/>';
+  svg+='<path d="'+atlL+'" fill="none" stroke="var(--warn)" stroke-width="1.6" opacity="0.9"/>';
   svg+='<path d="'+ctlL+'" fill="none" stroke="var(--accent)" stroke-width="2"/>';
+  // datumaxel: start, mitt, slut
+  const mid=Math.floor((n-1)/2);
+  svg+=txt(pad.l, H-7, dfmt(s[0].d), "#6E7C90", 9, "start");
+  if(n>4) svg+=txt(X(mid), H-7, dfmt(s[mid].d), "#6E7C90", 9, "middle");
+  svg+=txt(W-pad.r, H-7, dfmt(s[n-1].d), "#6E7C90", 9, "end");
+  // träffrutor per dag
+  const cols=[];
+  s.forEach((p,i)=>{ svg+='<rect class="hit" data-i="'+i+'" x="'+(X(i)-step/2).toFixed(1)+'" y="'+pad.t+'" width="'+step.toFixed(1)+'" height="'+ih+'" fill="transparent"/>';
+    const tsb=p.ctl-p.atl, sg=tsb>0?"+":"";
+    const sess = p.sports.length ? p.sports.map(x=>SPORT_LABEL[x]).join(" · ")+" · "+Math.round(p.load)+" TSS" : "Vilodag";
+    cols.push({cx:X(i), tip:'<span class="h">'+dfmt(p.d)+'</span><br>Form '+sg+Math.round(tsb)+' · Fitness '+Math.round(p.ctl)+' · Fatigue '+Math.round(p.atl)+'<br>'+sess}); });
   svg+="</svg>";
   c.innerHTML=
     '<div class="formtop">'+
@@ -1310,10 +1336,12 @@ function renderForm(){
         '<div><span class="k">'+Math.round(f.ctl)+'</span><span class="kl">Fitness</span></div>'+
         '<div><span class="k">'+Math.round(f.atl)+'</span><span class="kl">Fatigue</span></div></div>'+
     '</div>'+
-    svg+
+    '<div id="ch-form-svg" class="chart">'+svg+'</div>'+
     '<div class="formlegend"><span><i style="background:var(--accent)"></i>Fitness (CTL)</span>'+
-      '<span><i style="background:var(--warn)"></i>Fatigue (ATL)</span></div>'+
+      '<span><i style="background:var(--warn)"></i>Fatigue (ATL)</span>'+
+      '<span><i class="bar"></i>Belastning/dag (TSS, grenfärg)</span></div>'+
     '<p class="formnote">Negativ Form är meningen i bygg/peak — du lastar. Den ska klättra mot noll de sista 10–14 dagarna in i Holmsjö. Lita på benen före siffran.</p>';
+  barTips($("#ch-form-svg"), W, cols);
 }
 
 function renderAll(ts){
