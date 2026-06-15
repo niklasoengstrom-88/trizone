@@ -29,7 +29,7 @@
   --s1:4px; --s2:8px; --s3:16px; --s4:24px; --s5:32px;
   --disp:"Barlow Condensed", "Arial Narrow", sans-serif;
   --body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --r:14px;
+  --r:17px;
 }
 *{box-sizing:border-box; margin:0; padding:0}
 html{color-scheme:dark}
@@ -162,6 +162,16 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 .formkpis{display:flex; gap:18px; text-align:right}
 .formkpis .k{font-family:var(--disp); font-weight:700; font-size:24px; display:block; line-height:1; font-variant-numeric:tabular-nums}
 .formkpis .kl{color:var(--faint); font-size:11px; text-transform:uppercase; letter-spacing:.08em}
+.formrecov{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0 0 10px; padding:8px 11px;
+  background:var(--surface-lo); border:1px solid var(--line); border-radius:9px; font-size:12.5px; color:var(--mut)}
+.formrecov b{color:var(--ink); font-weight:600}
+.formrecov .b{color:var(--faint); font-weight:400}
+.formrecov .warn b{color:var(--warn)}
+.formrecov .sep{color:var(--faint); opacity:.6}
+.editsheet{display:inline-block; margin-top:var(--s3); padding:9px 14px; border:1px solid var(--line);
+  border-radius:10px; background:var(--surface); color:var(--accent); font-size:13px; text-decoration:none;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.editsheet:hover{border-color:#2E4A78}
 .formlegend{display:flex; gap:16px; margin-top:6px; color:var(--mut); font-size:12px}
 .formlegend i{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle}
 .formlegend i.bar{width:5px; height:11px; border-radius:1px; background:linear-gradient(var(--swim),var(--run)); opacity:.6}
@@ -197,9 +207,10 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 /* ---------- Diagram ---------- */
 svg{display:block; width:100%; height:auto}
 .chart{position:relative}
-.tip{position:absolute; pointer-events:none; z-index:6; background:#0A1018; border:1px solid #2C3D58;
-  border-radius:8px; padding:5px 9px; font-size:11.5px; color:var(--ink); white-space:nowrap;
-  transform:translate(-50%,calc(-100% - 9px)); box-shadow:0 6px 18px rgba(0,0,0,.45); opacity:0; transition:opacity .1s}
+.tip{position:absolute; pointer-events:none; z-index:6; background:rgba(12,18,28,.72); border:1px solid rgba(91,147,230,.28);
+  -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px);
+  border-radius:9px; padding:6px 10px; font-size:11.5px; color:var(--ink); white-space:nowrap;
+  transform:translate(-50%,calc(-100% - 9px)); box-shadow:0 6px 20px rgba(0,0,0,.5); opacity:0; transition:opacity .1s}
 .tip.show{opacity:1}
 .tip.below{transform:translate(-50%,11px)}
 .tip::after{content:""; position:absolute; left:50%; transform:translateX(-50%); bottom:-5px;
@@ -232,6 +243,8 @@ svg{display:block; width:100%; height:auto}
 .wkrow{display:flex; justify-content:space-between; align-items:baseline; padding:8px 0; border-top:1px solid var(--line); font-size:14px}
 .wkrow.first{border-top:0}
 .wkrow.total{font-weight:600}
+.wkrow.idle{opacity:.5}
+.wkrow.idle .nm i{opacity:.55}
 .wkrow .nm{display:flex; align-items:center; gap:8px}
 .wkrow .nm i{width:9px; height:9px; border-radius:3px; display:inline-block}
 .wkrow .val{font-variant-numeric:tabular-nums; text-align:right}
@@ -405,6 +418,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     <section id="sec-delmal">
       <h2>Delmål <small>plan vs utfall per gren</small></h2>
       <div id="ms-list"></div>
+      <div id="edit-sheet"></div>
     </section>
   </div>
 
@@ -494,6 +508,8 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     <input id="in-ms" type="url" placeholder="https://docs.google.com/…&output=csv">
     <label for="in-race">Google Sheet — CSV-länk för fliken Race (valfri, tävlingsdag)</label>
     <input id="in-race" type="url" placeholder="https://docs.google.com/…&output=csv">
+    <label for="in-edit">Google Sheet — redigeringslänk (valfri, för genväg)</label>
+    <input id="in-edit" type="url" placeholder="https://docs.google.com/spreadsheets/d/…/edit">
     <label for="in-proxy">Proxy-prefix (lämna tomt — används bara om direktanrop blockeras)</label>
     <input id="in-proxy" type="url" placeholder="https://din-worker.workers.dev/?url=">
     <label>Logotyp i header</label>
@@ -1096,7 +1112,7 @@ function renderWeek(ws){
     if(c&&s==="swim"&&c.km>0) val+=" · "+Math.round(c.km*1000)+" m";
     else if(c&&c.km>0.1&&s!=="strength") val+=" · "+n1(c.km)+" km";
     const d=ct-pt, dTxt=Math.abs(d)<0.017? "±0" : (d>0?"▲ ":"▼ ")+fmtH(Math.abs(d));
-    rows+='<div class="wkrow'+(first?" first":"")+'"><span class="nm"><i style="background:'+(COLORS[s]||COLORS.other)+'"></i>'+SPORT_LABEL[s]+
+    rows+='<div class="wkrow'+(first?" first":"")+(ct<=0?" idle":"")+'"><span class="nm"><i style="background:'+(COLORS[s]||COLORS.other)+'"></i>'+SPORT_LABEL[s]+
       (c&&c.n?' <span style="color:var(--faint)">×'+c.n+'</span>':'')+'</span><span class="val">'+val+'<span class="delta">'+dTxt+'</span></span></div>';
     first=false; }
   if(!rows) rows=emptyState("Inga pass den här veckan än","Första passet dyker upp så fort klockan synkat mot intervals.icu.","bars");
@@ -1279,6 +1295,32 @@ function computeForm(){
   const last=rows[rows.length-1];
   return { ctl:last.ctl, atl:last.atl, tsb:last.ctl-last.atl, series:rows };
 }
+function recoveryStrip(){
+  const r=computeRecovery();
+  if(!r) return "";
+  const parts=[];
+  if(r.sleepAvg!=null){ const low=r.sleepAvg<6.2;
+    parts.push('<span'+(low?' class="warn"':'')+'>Sömn 3 nätter: <b>'+n1(r.sleepAvg)+' h</b></span>'); }
+  if(r.recentRhr!=null){ const hi=r.baseRhr!=null && r.recentRhr>r.baseRhr+5;
+    parts.push('<span'+(hi?' class="warn"':'')+'>Vilopuls: <b>'+r.recentRhr+'</b>'+(r.baseRhr!=null? ' <span class="b">(baslinje '+r.baseRhr+')</span>':'')+'</span>'); }
+  if(r.recentHrv!=null) parts.push('<span>HRV: <b>'+r.recentHrv+' ms</b></span>');
+  if(!parts.length) return "";
+  return '<div class="formrecov">'+parts.join('<span class="sep">·</span>')+'</div>';
+}
+function computeRecovery(){
+  const w=data.wellness.map(x=>({d:pd(x.id), sleep:x.sleepSecs, hrv:x.hrv, rhr:x.restingHR??x.resting_hr}))
+    .filter(x=>x.d).sort((a,b)=>a.d-b.d);
+  if(!w.length) return null;
+  const sleeps=w.slice(-3).map(x=>x.sleep).filter(v=>v>0);
+  const sleepAvg = sleeps.length? sleeps.reduce((a,b)=>a+b,0)/sleeps.length/3600 : null;
+  const rhrs=w.filter(x=>x.rhr>0);
+  const recentRhr = rhrs.length? rhrs[rhrs.length-1].rhr : null;
+  const base = rhrs.slice(-30); const baseRhr = base.length? Math.round(base.reduce((a,b)=>a+b.rhr,0)/base.length) : null;
+  const hrvs=w.filter(x=>x.hrv>0);
+  const recentHrv = hrvs.length? Math.round(hrvs[hrvs.length-1].hrv) : null;
+  const has = sleepAvg!=null||recentRhr!=null||recentHrv!=null;
+  return has? {sleepAvg, recentRhr, baseRhr, recentHrv} : null;
+}
 function tsbBand(tsb){
   if(tsb>5)   return {label:"Fräsch",  col:"var(--ok)"};
   if(tsb>=-10)return {label:"Neutral", col:"var(--accent)"};
@@ -1350,6 +1392,7 @@ function renderForm(){
         '<div><span class="k">'+Math.round(f.ctl)+'</span><span class="kl">Fitness</span></div>'+
         '<div><span class="k">'+Math.round(f.atl)+'</span><span class="kl">Fatigue</span></div></div>'+
     '</div>'+
+    recoveryStrip()+
     '<div id="ch-form-svg" class="chart">'+svg+'</div>'+
     '<div class="formlegend"><span><i style="background:var(--accent)"></i>Fitness (CTL)</span>'+
       '<span><i style="background:var(--warn)"></i>Fatigue (ATL)</span>'+
@@ -1371,6 +1414,9 @@ function renderAll(ts){
   renderFlagLog(processFlagLog(flags));
   renderRace(plan);
   renderMilestones(ms);
+  const es=$("#edit-sheet"); if(es) es.innerHTML = (cfg&&cfg.editUrl)
+    ? '<a class="editsheet" href="'+esc(cfg.editUrl)+'" target="_blank" rel="noopener">Redigera plan &amp; delmål i Google Sheet ↗</a>'
+    : '';
   renderVolume(weeks, plan);
   renderRun(weeks);
   renderIntensity(inten, plan);
@@ -1444,7 +1490,7 @@ if("serviceWorker" in navigator){
 function loadCfg(){ try{ return JSON.parse(localStorage.getItem(CFG_KEY)); }catch(e){ return null; } }
 function openSettings(){ const c=cfg||{};
   $("#in-key").value=c.apiKey||""; $("#in-id").value=c.athleteId||"";
-  $("#in-plan").value=c.planUrl||""; $("#in-ms").value=c.msUrl||""; $("#in-race").value=c.raceUrl||""; $("#in-proxy").value=c.proxy||"";
+  $("#in-plan").value=c.planUrl||""; $("#in-ms").value=c.msUrl||""; $("#in-race").value=c.raceUrl||""; $("#in-edit").value=c.editUrl||""; $("#in-proxy").value=c.proxy||"";
   const lm=c.logoMode||"full";
   $("#logo-seg").querySelectorAll("button").forEach(b=>b.classList.toggle("active", b.getAttribute("data-logo")===lm));
   $("#settings").classList.add("show"); }
@@ -1453,7 +1499,7 @@ function saveSettings(){
   const logoBtn=$("#logo-seg").querySelector("button.active");
   const logoMode=logoBtn? logoBtn.getAttribute("data-logo") : ((cfg&&cfg.logoMode)||"full");
   cfg={ apiKey:$("#in-key").value.trim(), athleteId:$("#in-id").value.trim(),
-        planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), raceUrl:$("#in-race").value.trim(), proxy:$("#in-proxy").value.trim(),
+        planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), raceUrl:$("#in-race").value.trim(), editUrl:$("#in-edit").value.trim(), proxy:$("#in-proxy").value.trim(),
         logoMode:logoMode };
   if(cfg.athleteId && !/^i/i.test(cfg.athleteId) && /^\d+$/.test(cfg.athleteId)) cfg.athleteId="i"+cfg.athleteId;
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
