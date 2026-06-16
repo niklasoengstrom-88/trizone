@@ -119,6 +119,23 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 .grid3{display:grid; gap:var(--s3)}
 @media(min-width:880px){ .grid3{grid-template-columns:1fr 1fr 1fr} }
 .cardtitle{font-weight:600; font-size:14px; margin-bottom:2px}
+.cardhead{display:flex; align-items:flex-start; justify-content:space-between; gap:12px}
+.info-btn{flex:0 0 auto; width:26px; height:26px; border-radius:50%; border:1px solid var(--line);
+  background:var(--surface-lo); color:var(--accent); font-size:14px; line-height:1; cursor:pointer; padding:0}
+.info-btn:hover{border-color:#2E4A78}
+.form-info{margin:10px 0 4px; padding:13px 14px; background:var(--surface-lo); border:1px solid var(--line);
+  border-radius:11px; font-size:12.5px; color:var(--mut); line-height:1.55}
+.form-info .fi-head{font-family:var(--disp); font-weight:600; font-size:11px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--faint); margin-bottom:8px}
+.form-info dl{margin:0 0 10px; display:grid; grid-template-columns:auto 1fr; gap:3px 10px}
+.form-info dt{color:var(--ink); font-weight:600}
+.form-info dd{margin:0}
+.form-info .fi-scalelbl{color:var(--ink); font-weight:600; margin:4px 0 6px}
+.form-info .fi-key{display:flex; flex-wrap:wrap; gap:4px 14px; margin:8px 0 0}
+.form-info .fi-key span{display:flex; align-items:center; gap:6px}
+.form-info .fi-key i{width:9px; height:9px; border-radius:2px; display:inline-block}
+.form-info p{margin:8px 0 0}
+.form-info .fi-fine{color:var(--faint); font-size:11.5px; margin-top:9px}
 .cardsub{font-size:12px; color:var(--faint); margin-bottom:var(--s2)}
 
 /* ---------- Flaggor ---------- */
@@ -450,8 +467,11 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     <section id="sec-belastning">
       <h2>Belastning <small>senaste 12 veckorna</small></h2>
       <div class="card" style="margin-bottom:var(--s3)">
-        <div class="cardtitle">Dagsform</div>
-        <div class="cardsub">Fitness, Fatigue och Form (TSB) från intervals.icu</div>
+        <div class="cardhead">
+          <div><div class="cardtitle">Dagsform</div><div class="cardsub">Fitness, Fatigue och Form (TSB) från intervals.icu</div></div>
+          <button type="button" class="info-btn" id="form-info-btn" aria-expanded="false" aria-label="Så tolkar du siffrorna">ⓘ</button>
+        </div>
+        <div class="form-info" id="form-info" hidden></div>
         <div id="ch-form"></div>
       </div>
       <div class="grid2">
@@ -529,11 +549,6 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     <input id="in-edit" type="url" placeholder="https://docs.google.com/spreadsheets/d/…/edit">
     <label for="in-proxy">Proxy-prefix (lämna tomt — används bara om direktanrop blockeras)</label>
     <input id="in-proxy" type="url" placeholder="https://din-worker.workers.dev/?url=">
-    <label>Logotyp i header</label>
-    <div class="segctrl" id="logo-seg" style="margin-top:4px">
-      <button type="button" data-logo="full" class="active">Emblem + text</button>
-      <button type="button" data-logo="emblem">Bara emblem</button>
-    </div>
     <div class="row">
       <button class="btn primary" id="btn-save">Spara & hämta data</button>
       <button class="btn" id="btn-close">Stäng</button>
@@ -1395,6 +1410,34 @@ function tsbBand(tsb){
   if(tsb>=-25)return {label:"Lastad",  col:"var(--warn)"};
   return            {label:"Tung",    col:"var(--risk)"};
 }
+function formInfoPanel(tsb){
+  const lo=-40, hi=20, span=hi-lo, BX=8, BW=284, BY=16, BH=11;
+  const x=v=>BX+BW*(Math.min(hi,Math.max(lo,v))-lo)/span;
+  const seg=(a,b,c)=>'<rect x="'+x(a).toFixed(1)+'" y="'+BY+'" width="'+(x(b)-x(a)).toFixed(1)+'" height="'+BH+'" fill="'+c+'"/>';
+  const tick=b=>'<text x="'+x(b).toFixed(1)+'" y="'+(BY+BH+10)+'" text-anchor="middle" font-size="8.5" fill="var(--faint)">'+b+'</text>';
+  const mx=x(tsb), tx=Math.min(BX+BW-12, Math.max(BX+12, mx));
+  const scale='<svg viewBox="0 0 300 50" width="100%" style="margin:2px 0 0" role="img" aria-label="Form-zon">'+
+    seg(lo,-25,"var(--risk)")+seg(-25,-10,"var(--warn)")+seg(-10,5,"var(--accent)")+seg(5,hi,"var(--ok)")+
+    [-25,-10,5].map(tick).join("")+
+    '<path d="M'+(mx-4).toFixed(1)+' '+(BY-3)+' L'+(mx+4).toFixed(1)+' '+(BY-3)+' L'+mx.toFixed(1)+' '+(BY+3)+' Z" fill="var(--ink)"/>'+
+    '<text x="'+tx.toFixed(1)+'" y="9" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">'+(tsb>0?"+":"")+Math.round(tsb)+'</text>';
+  return '<div class="fi-head">Så tolkar du siffrorna</div>'+
+    '<dl>'+
+      '<dt>Form (TSB)</dt><dd>Fitness − Fatigue. Hur fräsch eller laddad du är.</dd>'+
+      '<dt>Fitness (CTL)</dt><dd>42-dagars belastningssnitt — din aeroba bas på lång sikt.</dd>'+
+      '<dt>Fatigue (ATL)</dt><dd>7-dagars snitt — färsk trötthet, stiger och faller snabbt.</dd>'+
+      '<dt>TSS</dt><dd>Belastning per pass (~100 ≈ 1 h på tröskel). Driver Fitness och Fatigue.</dd>'+
+    '</dl>'+
+    '<div class="fi-scalelbl">Din Form just nu</div>'+scale+'</svg>'+
+    '<div class="fi-key">'+
+      '<span><i style="background:var(--ok)"></i>Fräsch · tävlingsredo (&gt;+5)</span>'+
+      '<span><i style="background:var(--accent)"></i>Neutral · balans</span>'+
+      '<span><i style="background:var(--warn)"></i>Lastad · produktiv, här vill du vara i bygg/peak</span>'+
+      '<span><i style="background:var(--risk)"></i>Tung · övervaka, risk för överträning om långvarigt (&lt;−25)</span>'+
+    '</div>'+
+    '<p>Negativ Form är meningen i bygg och peak — du lastar. Den ska klättra mot noll de sista 10–14 dagarna in i Holmsjö.</p>'+
+    '<p class="fi-fine">TSS-guide: ~&lt;50 lätt, 100–150 hårt/långt. Öka inte Fitness mer än ~5–8 per vecka — snabbare ramp ökar skaderisken. Detta är vägledning, inte exakta lagar — väg alltid mot hur du faktiskt mår.</p>';
+}
 function renderForm(){
   const c=$("#ch-form"); if(!c) return;
   const f=computeForm();
@@ -1473,6 +1516,11 @@ function renderForm(){
     const info=$("#recov-info"); const open=info.hasAttribute("hidden");
     if(open) info.removeAttribute("hidden"); else info.setAttribute("hidden","");
     rb.setAttribute("aria-expanded", open?"true":"false"); });
+  const fi=$("#form-info"); if(fi) fi.innerHTML=formInfoPanel(f.tsb);
+  const fib=$("#form-info-btn"); if(fib) fib.onclick=()=>{   // onclick (ej addEventListener) => ingen ackumulering vid omrendering
+    const p=$("#form-info"); const open=p.hasAttribute("hidden");
+    if(open) p.removeAttribute("hidden"); else p.setAttribute("hidden","");
+    fib.setAttribute("aria-expanded", open?"true":"false"); };
 }
 
 function renderAll(ts){
@@ -1532,8 +1580,7 @@ function wordmarkSVG(h, col){
 function adjustWordmarks(){} // wordmark är nu en fryst kontur (path) — inget att mäta
 function renderBrand(){
   const br=$("#brandrow");
-  const mode=(cfg&&cfg.logoMode)||"full";
-  if(br) br.innerHTML='<span class="bemblem">'+emblemSVG()+'</span>'+(mode==="emblem"? "" : wordmarkSVG(15,"#A9B6C7"));
+  if(br) br.innerHTML='<span class="bemblem">'+emblemSVG()+'</span>'+wordmarkSVG(15,"#A9B6C7");
   const sp=$("#splash");
   if(sp&&!sp.dataset.built){ sp.dataset.built="1";
     sp.innerHTML='<div style="display:flex;align-items:center;gap:14px">'+
@@ -1555,16 +1602,11 @@ function loadCfg(){ try{ return JSON.parse(localStorage.getItem(CFG_KEY)); }catc
 function openSettings(){ const c=cfg||{};
   $("#in-key").value=c.apiKey||""; $("#in-id").value=c.athleteId||"";
   $("#in-plan").value=c.planUrl||""; $("#in-ms").value=c.msUrl||""; $("#in-race").value=c.raceUrl||""; $("#in-edit").value=c.editUrl||""; $("#in-proxy").value=c.proxy||"";
-  const lm=c.logoMode||"full";
-  $("#logo-seg").querySelectorAll("button").forEach(b=>b.classList.toggle("active", b.getAttribute("data-logo")===lm));
   $("#settings").classList.add("show"); }
 function closeSettings(){ $("#settings").classList.remove("show"); }
 function saveSettings(){
-  const logoBtn=$("#logo-seg").querySelector("button.active");
-  const logoMode=logoBtn? logoBtn.getAttribute("data-logo") : ((cfg&&cfg.logoMode)||"full");
   cfg={ apiKey:$("#in-key").value.trim(), athleteId:$("#in-id").value.trim(),
-        planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), raceUrl:$("#in-race").value.trim(), editUrl:$("#in-edit").value.trim(), proxy:$("#in-proxy").value.trim(),
-        logoMode:logoMode };
+        planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), raceUrl:$("#in-race").value.trim(), editUrl:$("#in-edit").value.trim(), proxy:$("#in-proxy").value.trim() };
   if(cfg.athleteId && !/^i/i.test(cfg.athleteId) && /^\d+$/.test(cfg.athleteId)) cfg.athleteId="i"+cfg.athleteId;
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   renderBrand();
@@ -1582,14 +1624,6 @@ function boot(){
   switchTab("nu");
   $("#form-seg").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>switchSeg(b.getAttribute("data-seg"))));
   switchSeg("belastning");
-  const setLogo=(m)=>{ cfg=cfg||{}; cfg.logoMode=m;
-    try{ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }catch(e){}
-    $("#logo-seg").querySelectorAll("button").forEach(x=>x.classList.toggle("active", x.getAttribute("data-logo")===m));
-    renderBrand(); };
-  $("#logo-seg").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>setLogo(b.getAttribute("data-logo"))));
-  $("#brandrow").addEventListener("click",()=>setLogo(((cfg&&cfg.logoMode)||"full")==="full"?"emblem":"full"));
-  $("#brandrow").style.cursor="pointer";
-  $("#brandrow").title="Tryck för att växla logotyp";
   document.addEventListener("pointerdown",e=>{
     if(e.target.closest && e.target.closest(".chart")) return;
     document.querySelectorAll(".chart").forEach(c=>{ if(c._dismiss) c._dismiss(); }); }, true);
