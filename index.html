@@ -319,6 +319,12 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
   font-size:12px; color:#A8C7E0}
 .help ol{padding-left:18px} .help li{margin:4px 0}
 #onboard{margin-top:18px}
+.zgrid{display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; margin:4px 0 6px}
+.zgrid .zf{display:flex; flex-direction:column; gap:3px}
+.zgrid .zf span{font-size:11.5px; color:var(--mut)}
+.zgrid .zf input{width:100%; padding:8px 10px; border-radius:9px; border:1px solid var(--line);
+  background:var(--surface-lo); color:var(--ink); font-size:15px; font-variant-numeric:tabular-nums}
+.zhint{font-size:11.5px; color:var(--faint); margin:0 0 6px}
 
 /* ---------- Flikar ---------- */
 .tabpanel{animation:fade .18s ease}
@@ -415,7 +421,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
   <div class="tabpanel" id="tab-nu" data-tab="nu">
     <div class="herohead">
       <div class="eyebrow" id="eyebrow">Olympisk distans</div>
-      <h1 id="racename">Mot Holmsjö</h1>
+      <h1 id="racename">TRIZONE</h1>
       <div class="countdown"><span class="n" id="cd-n">–</span><span class="u" id="cd-u">dagar kvar</span></div>
       <div class="racedate" id="cd-date"></div>
       <div class="racedate" id="cd-next"></div>
@@ -549,6 +555,14 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     <input id="in-edit" type="url" placeholder="https://docs.google.com/spreadsheets/d/…/edit">
     <label for="in-proxy">Proxy-prefix (lämna tomt — används bara om direktanrop blockeras)</label>
     <input id="in-proxy" type="url" placeholder="https://din-worker.workers.dev/?url=">
+    <label>Pulsfönster för effektivitetsgraferna</label>
+    <p class="zhint">Det aeroba pulsintervall (ungefär din Z2) som watt-vid-puls och tempo-vid-puls jämför inom — håller pulsen konstant så trenden blir läsbar. Dina egentliga zoner Z1–Z5 sätter du i intervals.icu; appen läser dem därifrån.</p>
+    <div class="zgrid">
+      <div class="zf"><span>Cykel — lägsta puls</span><input id="in-blo" type="number" inputmode="numeric" placeholder="130"></div>
+      <div class="zf"><span>Cykel — högsta puls</span><input id="in-bhi" type="number" inputmode="numeric" placeholder="145"></div>
+      <div class="zf"><span>Löpning — lägsta puls</span><input id="in-rlo" type="number" inputmode="numeric" placeholder="124"></div>
+      <div class="zf"><span>Löpning — högsta puls</span><input id="in-rhi" type="number" inputmode="numeric" placeholder="150"></div>
+    </div>
     <div class="row">
       <button class="btn primary" id="btn-save">Spara & hämta data</button>
       <button class="btn" id="btn-close">Stäng</button>
@@ -585,7 +599,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 /* ============ Konstanter & state ============ */
 const CFG_KEY="holmsjo.cfg.v1", CACHE_KEY="holmsjo.cache.v1";
 const DAY=86400000;
-const FALLBACK_RACE={name:"Holmsjö Triathlon", date:"2026-07-25"};
+const FALLBACK_RACE={name:"Din tävling", date:"2099-01-01", placeholder:true};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
 let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
@@ -705,7 +719,7 @@ function getPlan(){
     else if(row.start&&row.end){ phases.push(row); } }
   phases.sort((a,b)=>a.start-b.start);
   races.sort((a,b)=>a.date-b.date);
-  if(!races.length) races.push({name:FALLBACK_RACE.name, date:pd(FALLBACK_RACE.date), note:""});
+  if(!races.length) races.push({name:FALLBACK_RACE.name, date:pd(FALLBACK_RACE.date), note:"", placeholder:true});
   const t=today();
   const race = races.find(r=>r.date>=t) || races[races.length-1];
   return {phases, rests, races, race}; }
@@ -750,12 +764,12 @@ function computeFlags(weeks, plan, inten, ms){
   const cw=weeks[weeks.length-1];
   if(cw && cw.cap!=null && cw.runKm > cw.cap)
     flags.push({key:"run-cap", lv:"risk", t:"Löpvolymen sprängde taket",
-      d:"Du ligger "+n1(cw.runKm-cw.cap)+" km över veckans tak ("+n1(cw.runKm)+" mot "+n1(cw.cap)+" km). Korta eller stryk nästa löppass — med din fothistorik är det inte värt risken så här nära Holmsjö."});
+      d:"Du ligger "+n1(cw.runKm-cw.cap)+" km över veckans tak ("+n1(cw.runKm)+" mot "+n1(cw.cap)+" km). Korta eller stryk nästa löppass — en så snabb ökning är inte värd skaderisken så här nära tävlingen."});
   const lastSwim=data.activities.filter(a=>sportOf(a)==="swim").map(actDate).sort((a,b)=>b-a)[0];
   if(data.activities.length){
     const gap=lastSwim? Math.floor((t-lastSwim)/DAY) : 99;
     if(gap>7) flags.push({key:"swim-gap", lv:"risk", t:"Simningen har glappat",
-      d:(lastSwim? "Det var "+gap+" dagar sedan du sam." : "Inget simpass i datan.")+" Boka ett pass den här veckan — simningen är din tunnaste gren och den straffar sig snabbast i öppet vatten."}); }
+      d:(lastSwim? "Det var "+gap+" dagar sedan du sam." : "Inget simpass i datan.")+" Boka ett simpass den här veckan — vattenkänslan tappas snabbast vid uppehåll, och det märks i öppet vatten."}); }
   for(const m of ms){ if(m.status!=="done"&&m.plan&&m.plan<=addDays(t,7)&&!m.done){
     flags.push({key:"milestone-risk", lv:"warn", t:"Ett delmål håller på att rinna iväg", d:"”"+m.desc+"” skulle vara klart "+dfmt(m.plan)+". Planera in det den här veckan eller flytta det medvetet — låt det inte bara glida."}); break; } }
   const ph=currentPhase(plan);
@@ -798,6 +812,12 @@ function txt(x,y,s,fill,size,anchor,bold){ return '<text x="'+x+'" y="'+y+'" fil
 /* ============ Rendering ============ */
 function renderHeader(plan){
   const t=today(), r=plan.race;
+  if(!r || r.placeholder){
+    $("#racename").textContent="TRIZONE";
+    $("#cd-n").textContent="–"; $("#cd-u").textContent="ingen tävling inlagd";
+    $("#cd-date").textContent="Lägg in din tävling i ditt Sheet — en rad med typ = race i fliken Plan, eller fyll fliken Race.";
+    $("#cd-next").textContent=""; return;
+  }
   $("#racename").textContent="Mot "+(r.name.replace(/ ?triathlon/i,"")||"racet");
   const days=Math.ceil((r.date-t)/DAY);
   $("#cd-n").textContent = days>=0? days : "✓";
@@ -816,7 +836,7 @@ function renderTimeline(plan){
   wrap.querySelectorAll(".tl-today,.tl-flag,.tl-tools,.tl-ms").forEach(e=>e.remove());
   band.innerHTML="";
   const t=today(), races=plan.races||[];
-  if(!plan.phases.length&&!races.length){ band.innerHTML='<div class="tl-seg" style="flex:1"><span>Lägg in faser i fliken Plan</span></div>'; return; }
+  if(!plan.phases.length&&!races.some(x=>!x.placeholder)){ band.innerHTML='<div class="tl-seg" style="flex:1"><span>Lägg in faser i fliken Plan</span></div>'; return; }
   const tStart = plan.phases.length? plan.phases[0].start : races[0].date;
   let tEnd = plan.phases.length? plan.phases[plan.phases.length-1].end : tStart;
   for(const r of races) if(r.date>tEnd) tEnd=r.date;
@@ -856,7 +876,7 @@ function renderTimeline(plan){
   if(+t>=+w0&&+t<=+tEnd){
     const mark=document.createElement("div"); mark.className="tl-today"; mark.style.left=pos(t); mark.title="Idag";
     wrap.appendChild(mark); }
-  races.forEach(r=>{
+  races.filter(r=>!r.placeholder).forEach(r=>{
     const fl=document.createElement("button"); fl.type="button";
     fl.className="tl-flag"+(r===plan.race?" major":"");
     fl.style.left=pos(r.date); fl.textContent="🏁";
@@ -1090,21 +1110,26 @@ function scatter(el, pts, opts){
 /* Minimitrösklar för effektivitetspunkter — kort pass = puls hinner inte nå steady state = missvisande.
    steadyLoFrac: minst denna andel av tiden i Z1–Z2 för att räknas som jämnt aerobt pass (sållar bort intervaller). */
 const EFF_MIN={ bike:{minSec:1800}, run:{minSec:1800}, swim:{minM:600}, steadyLoFrac:0.80 };
+const EFF_BANDS_DEF={bikeLo:130,bikeHi:145,runLo:124,runHi:150};
+function effBands(){ const c=cfg||{};
+  return { bikeLo:+c.effBikeLo||EFF_BANDS_DEF.bikeLo, bikeHi:+c.effBikeHi||EFF_BANDS_DEF.bikeHi,
+           runLo:+c.effRunLo||EFF_BANDS_DEF.runLo, runHi:+c.effRunHi||EFF_BANDS_DEF.runHi }; }
 function isSteady(a){
   const z=zones(a); if(!z||!z.length) return true;            // ingen zondata → låt durationsfiltret avgöra
   let lo=(z[0]||0)+(z[1]||0), tot=0; for(const v of z) tot+=v||0;
   return tot>0 ? lo/tot >= EFF_MIN.steadyLoFrac : true;
 }
 function renderEfficiency(ms){
+  const EB=effBands();
   const acts=data.activities.slice().sort((a,b)=>actDate(a)-actDate(b));
   const bike=acts.filter(a=>sportOf(a)==="bike").map(a=>{ const hr=actHR(a), w=actW(a), d=actDate(a);
-      return (d&&hr>=130&&hr<=145&&w>50&&(a.moving_time||0)>=EFF_MIN.bike.minSec&&isSteady(a))? {x:+d, y:w, hollow:!(a.trainer||/virtual/i.test(a.type||"")),
+      return (d&&hr>=EB.bikeLo&&hr<=EB.bikeHi&&w>50&&(a.moving_time||0)>=EFF_MIN.bike.minSec&&isSteady(a))? {x:+d, y:w, hollow:!(a.trainer||/virtual/i.test(a.type||"")),
         tip:dfmt(d)+" · "+Math.round(w)+" W @ "+Math.round(hr)+" bpm"} : null; }).filter(Boolean);
   scatter($("#ch-bike"), bike, {color:COLORS.bike, yfmt:v=>Math.round(v)+" W",
     emptyTitle:"Ingen wattbaserad trend än", emptyIcon:"trend",
     empty:"Kör ett par Z2-pass på spinningcykeln (eller med wattpedal) så ritas watt-vid-puls-trenden här."});
   const run=acts.filter(a=>sportOf(a)==="run").map(a=>{ const hr=actHR(a), d=actDate(a);
-      if(!d||!(hr>=124&&hr<=150)||(a.moving_time||0)<EFF_MIN.run.minSec||!(a.distance>0)||!isSteady(a)) return null;
+      if(!d||!(hr>=EB.runLo&&hr<=EB.runHi)||(a.moving_time||0)<EFF_MIN.run.minSec||!(a.distance>0)||!isSteady(a)) return null;
       const pace=a.moving_time/(a.distance/1000);
       return {x:+d, y:pace, tip:dfmt(d)+" · "+paceFmt(pace)+"/km @ "+Math.round(hr)+" bpm"}; }).filter(Boolean);
   scatter($("#ch-runeff"), run, {color:COLORS.run, invert:true, yfmt:v=>paceFmt(v),
@@ -1435,7 +1460,7 @@ function formInfoPanel(tsb){
       '<span><i style="background:var(--warn)"></i>Lastad · produktiv, här vill du vara i bygg/peak</span>'+
       '<span><i style="background:var(--risk)"></i>Tung · övervaka, risk för överträning om långvarigt (&lt;−25)</span>'+
     '</div>'+
-    '<p>Negativ Form är meningen i bygg och peak — du lastar. Den ska klättra mot noll de sista 10–14 dagarna in i Holmsjö.</p>'+
+    '<p>Negativ Form är meningen i bygg och peak — du lastar. Den ska klättra mot noll de sista 10–14 dagarna fram till din tävling.</p>'+
     '<p class="fi-fine">TSS-guide: ~&lt;50 lätt, 100–150 hårt/långt. Öka inte Fitness mer än ~5–8 per vecka — snabbare ramp ökar skaderisken. Detta är vägledning, inte exakta lagar — väg alltid mot hur du faktiskt mår.</p>';
 }
 function renderForm(){
@@ -1508,7 +1533,7 @@ function renderForm(){
     '<div class="formlegend"><span><i style="background:var(--accent)"></i>Fitness (CTL)</span>'+
       '<span><i style="background:var(--warn)"></i>Fatigue (ATL)</span>'+
       '<span><i class="bar"></i>Belastning/dag (TSS, grenfärg)</span></div>'+
-    '<p class="formnote">Negativ Form är meningen i bygg/peak — du lastar. Den ska klättra mot noll de sista 10–14 dagarna in i Holmsjö. Lita på benen före siffran.</p>';
+    '<p class="formnote">Negativ Form är meningen i bygg/peak — du lastar. Den ska klättra mot noll de sista 10–14 dagarna fram till din tävling. Lita på benen före siffran.</p>';
   barTips($("#ch-form-svg"), W, cols, {top:pad.t, bottom:pad.t+ih});
   $("#form-span").querySelectorAll("button").forEach(btn=>btn.addEventListener("click",()=>{
     formSpan=+btn.getAttribute("data-d"); renderForm(); }));
@@ -1599,24 +1624,47 @@ if("serviceWorker" in navigator){
 
 /* ============ Inställningar & start ============ */
 function loadCfg(){ try{ return JSON.parse(localStorage.getItem(CFG_KEY)); }catch(e){ return null; } }
+function fillBands(p){ const b=effBands();
+  $("#"+p+"-blo").value=b.bikeLo; $("#"+p+"-bhi").value=b.bikeHi; $("#"+p+"-rlo").value=b.runLo; $("#"+p+"-rhi").value=b.runHi; }
+function readBands(p){ return {
+  effBikeLo:+($("#"+p+"-blo").value)||EFF_BANDS_DEF.bikeLo, effBikeHi:+($("#"+p+"-bhi").value)||EFF_BANDS_DEF.bikeHi,
+  effRunLo:+($("#"+p+"-rlo").value)||EFF_BANDS_DEF.runLo, effRunHi:+($("#"+p+"-rhi").value)||EFF_BANDS_DEF.runHi }; }
 function openSettings(){ const c=cfg||{};
   $("#in-key").value=c.apiKey||""; $("#in-id").value=c.athleteId||"";
   $("#in-plan").value=c.planUrl||""; $("#in-ms").value=c.msUrl||""; $("#in-race").value=c.raceUrl||""; $("#in-edit").value=c.editUrl||""; $("#in-proxy").value=c.proxy||"";
+  fillBands("in");
   $("#settings").classList.add("show"); }
 function closeSettings(){ $("#settings").classList.remove("show"); }
 function saveSettings(){
   cfg={ apiKey:$("#in-key").value.trim(), athleteId:$("#in-id").value.trim(),
-        planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), raceUrl:$("#in-race").value.trim(), editUrl:$("#in-edit").value.trim(), proxy:$("#in-proxy").value.trim() };
+        planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), raceUrl:$("#in-race").value.trim(), editUrl:$("#in-edit").value.trim(), proxy:$("#in-proxy").value.trim(),
+        ...readBands("in") };
   if(cfg.athleteId && !/^i/i.test(cfg.athleteId) && /^\d+$/.test(cfg.athleteId)) cfg.athleteId="i"+cfg.athleteId;
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   renderBrand();
   closeSettings(); toast("Inställningar sparade ✓"); refreshAll(); }
 
 function showOnboarding(){
-  $("#onboard").innerHTML='<div class="card"><div class="cardtitle">Kom igång</div>'+
-    '<p style="color:var(--mut);font-size:14px;margin:6px 0 12px">Appen läser passdata från intervals.icu och plan/delmål från ett Google Sheet. Allt sparas lokalt i din webbläsare — inget skickas någon annanstans.</p>'+
-    '<button class="btn primary" id="btn-onboard">Öppna inställningar</button></div>';
-  $("#btn-onboard").addEventListener("click",openSettings); }
+  $("#onboard").innerHTML='<div class="card">'+
+    '<div class="cardtitle">Välkommen till TRIZONE</div>'+
+    '<p style="color:var(--mut);font-size:14px;margin:6px 0 10px">TRIZONE läser din träningsdata från intervals.icu och din plan, dina delmål och din tävling från ett Google Sheet. Allt sparas lokalt i din webbläsare — inget skickas någon annanstans. Följ <b>TRIZONE setup-guiden</b> du fått för steg-för-steg.</p>'+
+    '<div class="cardsub" style="margin-bottom:2px">Pulsfönster för effektivitetsgraferna</div>'+
+    '<p class="zhint">Det aeroba intervallet (ungefär Z2) som effektivitetsgraferna jämför inom. Dina zoner Z1–Z5 sätter du i intervals.icu. Kan ändras senare i inställningar.</p>'+
+    '<div class="zgrid">'+
+      '<div class="zf"><span>Cykel — lägsta puls</span><input id="ob-blo" type="number" inputmode="numeric" placeholder="130"></div>'+
+      '<div class="zf"><span>Cykel — högsta puls</span><input id="ob-bhi" type="number" inputmode="numeric" placeholder="145"></div>'+
+      '<div class="zf"><span>Löpning — lägsta puls</span><input id="ob-rlo" type="number" inputmode="numeric" placeholder="124"></div>'+
+      '<div class="zf"><span>Löpning — högsta puls</span><input id="ob-rhi" type="number" inputmode="numeric" placeholder="150"></div>'+
+    '</div>'+
+    '<div class="row" style="margin-top:10px">'+
+      '<button class="btn primary" id="btn-onboard">Öppna inställningar</button>'+
+      '<button class="btn" id="ob-save">Spara pulszoner</button>'+
+    '</div></div>';
+  fillBands("ob");
+  $("#btn-onboard").addEventListener("click",openSettings);
+  $("#ob-save").addEventListener("click",()=>{ cfg=Object.assign(cfg||{}, readBands("ob"));
+    try{ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }catch(e){}
+    toast("Pulszoner sparade ✓"); }); }
 
 function boot(){
   renderBrand();
