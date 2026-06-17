@@ -420,7 +420,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
   <!-- ===== NU ===== -->
   <div class="tabpanel" id="tab-nu" data-tab="nu">
     <div class="herohead">
-      <div class="eyebrow" id="eyebrow">Olympisk distans</div>
+      <div class="eyebrow" id="eyebrow">Träningsöversikt</div>
       <h1 id="racename">TRIZONE</h1>
       <div class="countdown"><span class="n" id="cd-n">–</span><span class="u" id="cd-u">dagar kvar</span></div>
       <div class="racedate" id="cd-date"></div>
@@ -576,8 +576,8 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
       </ol>
       <h3>2 · Google Sheet (två flikar)</h3>
       <p>Flik <b>Plan</b>, exakt dessa kolumnrubriker:</p>
-      <p><code>typ</code> <code>namn</code> <code>start</code> <code>slut</code> <code>mal_lag</code> <code>anteckning</code></p>
-      <p>typ = <code>fas</code>, <code>race</code> eller <code>vila</code> (återhämtningsvecka). Datum som ÅÅÅÅ-MM-DD. mal_lag = mål-% lågintensivt (t.ex. 75).</p>
+      <p><code>typ</code> <code>namn</code> <code>start</code> <code>slut</code> <code>mal_lag</code> <code>kategori</code> <code>anteckning</code></p>
+      <p>typ = <code>fas</code>, <code>race</code> eller <code>vila</code> (återhämtningsvecka). Datum som ÅÅÅÅ-MM-DD. mal_lag = mål-% lågintensivt (t.ex. 75). kategori = valfri etikett ovanför tävlingsnamnet på race-rader (t.ex. Marathon, Olympisk distans, Gravel 120 km).</p>
       <p style="margin-top:8px">Flik <b>Delmal</b>:</p>
       <p><code>gren</code> <code>beskrivning</code> <code>plandatum</code> <code>faktiskt</code> <code>status</code> <code>varde</code> <code>anteckning</code></p>
       <p>gren = sim/cykel/löp/brick/styrka · status = klart/pågår/skjutet/risk (tomt = planerat) · varde = valfri siffra, t.ex. längsta kontinuerliga simdistans i meter.</p>
@@ -714,7 +714,7 @@ function getPlan(){
   for(const r of data.plan){
     const typ=(r.typ||"").toLowerCase();
     const row={name:r.namn||"", start:pd(r.start), end:pd(r.slut), target:parseFloat((r.mallag||"").replace(",","."))||null, note:r.anteckning||""};
-    if(typ==="race"&&row.start){ races.push({name:row.name||FALLBACK_RACE.name, date:row.start, note:row.note}); }
+    if(typ==="race"&&row.start){ races.push({name:row.name||FALLBACK_RACE.name, date:row.start, note:row.note, cat:r.kategori||""}); }
     else if(typ==="vila"&&row.start){ rests.push(row); }
     else if(row.start&&row.end){ phases.push(row); } }
   phases.sort((a,b)=>a.start-b.start);
@@ -813,13 +813,15 @@ function txt(x,y,s,fill,size,anchor,bold){ return '<text x="'+x+'" y="'+y+'" fil
 function renderHeader(plan){
   const t=today(), r=plan.race;
   if(!r || r.placeholder){
+    $("#eyebrow").textContent="Träningsöversikt";
     $("#racename").textContent="TRIZONE";
     $("#cd-n").textContent="–"; $("#cd-u").textContent="ingen tävling inlagd";
     $("#cd-date").textContent="Lägg in din tävling i ditt Sheet — en rad med typ = race i fliken Plan, eller fyll fliken Race.";
     $("#cd-next").textContent=""; return;
   }
-  $("#racename").textContent="Mot "+(r.name.replace(/ ?triathlon/i,"")||"racet");
   const days=Math.ceil((r.date-t)/DAY);
+  $("#eyebrow").textContent = days===0?"Race-dag" : (days>0&&days<=7)?"Race-vecka" : (r.cat||"Nästa tävling");
+  $("#racename").textContent="Mot "+(r.name.replace(/ ?triathlon/i,"")||"racet");
   $("#cd-n").textContent = days>=0? days : "✓";
   $("#cd-u").textContent = days>1? "dagar kvar" : days===1? "dag kvar" : days===0? "RACE-DAG" : "genomfört";
   $("#cd-date").textContent = r.name+" · "+r.date.toLocaleDateString("sv-SE",{day:"numeric",month:"long",year:"numeric"})+" · vecka "+weekNo(r.date);
