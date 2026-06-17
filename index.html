@@ -484,6 +484,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
         <div class="card">
           <div class="cardtitle">Veckovolym per gren</div>
           <div class="cardsub">Timmar per vecka · skuggade fält = återhämtningsvecka enligt plan</div>
+          <div class="spanchips" id="vol-span"></div>
           <div id="ch-volume"></div>
           <div class="legend" id="lg-volume"></div>
         </div>
@@ -505,15 +506,16 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     <div class="form-group" data-seg="effektivitet" hidden>
     <section id="sec-effektivitet">
       <h2>Aerob effektivitet <small>samma puls, bättre output = progression</small></h2>
+      <div class="spanchips" id="eff-span"></div>
       <div class="grid3">
         <div class="card">
           <div class="cardtitle" style="color:var(--bike)">Cykel</div>
-          <div class="cardsub">Snittwatt på pass med snittpuls 130–145, ≥30 min · ● = inomhus/wattkälla, ○ = utomhus</div>
+          <div class="cardsub" id="sub-bike">Snittwatt på pass med snittpuls 130–145, ≥30 min · ● = inomhus/wattkälla, ○ = utomhus</div>
           <div id="ch-bike"></div>
         </div>
         <div class="card">
           <div class="cardtitle" style="color:var(--run)">Löpning</div>
-          <div class="cardsub">Tempo på Z2-pass (puls 124–150, ≥30 min) · uppåt i grafen = snabbare</div>
+          <div class="cardsub" id="sub-run">Tempo på Z2-pass (puls 124–150, ≥30 min) · uppåt i grafen = snabbare</div>
           <div id="ch-runeff"></div>
         </div>
         <div class="card">
@@ -944,13 +946,16 @@ function renderMilestones(ms){
 
 function renderVolume(weeks, plan){
   const el=$("#ch-volume");
-  const anyData=weeks.some(w=>Object.values(w.vol).reduce((a,b)=>a+b,0)>0.017);
+  const vs=$("#vol-span"); if(vs){ vs.innerHTML=[[12,"12 v"],[9999,"Säsong"]].map(o=>'<button type="button" data-d="'+o[0]+'"'+(volSpan===o[0]?' class="active"':'')+'>'+o[1]+'</button>').join("");
+    vs.querySelectorAll("button").forEach(btn=>btn.addEventListener("click",()=>{ volSpan=+btn.getAttribute("data-d"); renderVolume(weeks, plan); })); }
+  const wk = volSpan>=9000 ? weeks : weeks.slice(-volSpan);
+  const anyData=wk.some(w=>Object.values(w.vol).reduce((a,b)=>a+b,0)>0.017);
   if(!anyData){ el.innerHTML=emptyState("Ingen volym än","Så fort dina pass synkar från intervals.icu ritas veckovolymen per gren här.","bars"); $("#lg-volume").innerHTML=""; return; }
   const W=460,H=200,pad={l:32,r:8,t:16,b:26}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
-  const max=Math.max(1,...weeks.map(w=>Object.values(w.vol).reduce((a,b)=>a+b,0)));
-  const bw=iw/weeks.length;
+  const max=Math.max(1,...wk.map(w=>Object.values(w.vol).reduce((a,b)=>a+b,0)));
+  const bw=iw/wk.length;
   let s=svgOpen(W,H);
-  weeks.forEach((w,i)=>{ const isRest=plan.rests.some(r=>w.start>=monday(r.start)&&w.start<=r.end);
+  wk.forEach((w,i)=>{ const isRest=plan.rests.some(r=>w.start>=monday(r.start)&&w.start<=r.end);
     if(isRest) s+='<rect x="'+(pad.l+i*bw)+'" y="'+pad.t+'" width="'+bw+'" height="'+ih+'" fill="#FFFFFF" opacity="0.035"/>'; });
   for(const gy of [0.5,1]){ const y=pad.t+ih-ih*gy;
     s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+y+'" y2="'+y+'" stroke="#19232F" stroke-width="1"/>';
@@ -958,18 +963,18 @@ function renderVolume(weeks, plan){
   s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+(pad.t+ih)+'" y2="'+(pad.t+ih)+'" stroke="#243140" stroke-width="1"/>';
   const order=["swim","bike","run","strength","other"];
   const cols=[];
-  weeks.forEach((w,i)=>{ let y=pad.t+ih; const x=pad.l+i*bw+bw*0.22, wpx=bw*0.56;
+  wk.forEach((w,i)=>{ let y=pad.t+ih; const x=pad.l+i*bw+bw*0.22, wpx=bw*0.56;
     const segs=order.filter(k=>w.vol[k]>0);
     segs.forEach((k,si)=>{ const v=w.vol[k]; let h=ih*v/max; if(si>0) h-=1; if(h<1) h=Math.max(h,0.8);
       y-=h;
       const top = si===segs.length-1;
       s+='<rect x="'+x+'" y="'+y+'" width="'+wpx+'" height="'+h+'" fill="'+COLORS[k]+'" rx="'+(top?2:0)+'"/>';
       y-=1; });
-    if(i%2===(weeks.length-1)%2) s+=txt(pad.l+i*bw+bw/2, H-8, "v"+weekNo(w.start), "#5C687C", 9, "middle");
+    if(i%2===(wk.length-1)%2) s+=txt(pad.l+i*bw+bw/2, H-8, "v"+weekNo(w.start), "#5C687C", 9, "middle");
     const tot=order.reduce((a,k)=>a+w.vol[k],0);
     const parts=order.filter(k=>w.vol[k]>0.017).map(k=>SPORT_LABEL[k]+" "+hm(w.vol[k]));
     cols.push({cx:pad.l+i*bw+bw/2, tip:'<span class="h">v'+weekNo(w.start)+' · totalt '+hm(tot)+'</span><br>'+(parts.join(" · ")||"inga pass")}); });
-  weeks.forEach((w,i)=>{ s+='<rect class="hit" data-i="'+i+'" x="'+(pad.l+i*bw)+'" y="'+pad.t+'" width="'+bw+'" height="'+ih+'" fill="transparent"/>'; });
+  wk.forEach((w,i)=>{ s+='<rect class="hit" data-i="'+i+'" x="'+(pad.l+i*bw)+'" y="'+pad.t+'" width="'+bw+'" height="'+ih+'" fill="transparent"/>'; });
   s+="</svg>";
   el.innerHTML=s;
   barTips(el, W, cols);
@@ -1073,7 +1078,7 @@ function scatter(el, pts, opts){
     s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="#19232F"/>';
     s+=txt(pad.l-6,Y(v)+3,opts.yfmt(v),"#5C687C",9,"end"); }
   const reg=linreg(pts);
-  if(reg) s+='<line x1="'+X(x0)+'" y1="'+Y(reg.a*x0+reg.b)+'" x2="'+X(x1)+'" y2="'+Y(reg.a*x1+reg.b)+'" stroke="'+opts.color+'" stroke-width="1.5" opacity="0.55" stroke-dasharray="4 3"/>';
+  if(reg && pts.length>=(opts.minTrend||5)) s+='<line x1="'+X(x0)+'" y1="'+Y(reg.a*x0+reg.b)+'" x2="'+X(x1)+'" y2="'+Y(reg.a*x1+reg.b)+'" stroke="'+opts.color+'" stroke-width="1.5" opacity="0.55" stroke-dasharray="4 3"/>';
   const pos=[];
   pts.forEach((p,i)=>{ const cx=X(p.x), cy=Y(p.y); pos.push({cx,cy,tip:p.tip, hollow:!!p.hollow});
     s+= p.hollow? '<circle class="pt" data-i="'+i+'" cx="'+cx+'" cy="'+cy+'" r="3.6" fill="none" stroke="'+opts.color+'" stroke-width="1.6"/>'
@@ -1123,25 +1128,30 @@ function isSteady(a){
 }
 function renderEfficiency(ms){
   const EB=effBands();
+  const cut = effSpan>=9000 ? 0 : +addDays(today(),-effSpan);
+  const sb=$("#sub-bike"); if(sb) sb.textContent="Snittwatt på pass med snittpuls "+EB.bikeLo+"–"+EB.bikeHi+", ≥30 min · ● = inomhus/wattkälla, ○ = utomhus";
+  const sr=$("#sub-run"); if(sr) sr.textContent="Tempo på Z2-pass (puls "+EB.runLo+"–"+EB.runHi+", ≥30 min) · uppåt i grafen = snabbare";
+  const esp=$("#eff-span"); if(esp){ esp.innerHTML=[[90,"3M"],[180,"6M"],[9999,"Säsong"]].map(o=>'<button type="button" data-d="'+o[0]+'"'+(effSpan===o[0]?' class="active"':'')+'>'+o[1]+'</button>').join("");
+    esp.querySelectorAll("button").forEach(btn=>btn.addEventListener("click",()=>{ effSpan=+btn.getAttribute("data-d"); renderEfficiency(ms); })); }
   const acts=data.activities.slice().sort((a,b)=>actDate(a)-actDate(b));
   const bike=acts.filter(a=>sportOf(a)==="bike").map(a=>{ const hr=actHR(a), w=actW(a), d=actDate(a);
       return (d&&hr>=EB.bikeLo&&hr<=EB.bikeHi&&w>50&&(a.moving_time||0)>=EFF_MIN.bike.minSec&&isSteady(a))? {x:+d, y:w, hollow:!(a.trainer||/virtual/i.test(a.type||"")),
-        tip:dfmt(d)+" · "+Math.round(w)+" W @ "+Math.round(hr)+" bpm"} : null; }).filter(Boolean);
-  scatter($("#ch-bike"), bike, {color:COLORS.bike, yfmt:v=>Math.round(v)+" W",
+        tip:dfmt(d)+" · "+Math.round(w)+" W @ "+Math.round(hr)+" bpm"} : null; }).filter(Boolean).filter(p=>p.x>=cut);
+  scatter($("#ch-bike"), bike, {color:COLORS.bike, yfmt:v=>Math.round(v)+" W", minTrend:5,
     emptyTitle:"Ingen wattbaserad trend än", emptyIcon:"trend",
     empty:"Kör ett par Z2-pass på spinningcykeln (eller med wattpedal) så ritas watt-vid-puls-trenden här."});
   const run=acts.filter(a=>sportOf(a)==="run").map(a=>{ const hr=actHR(a), d=actDate(a);
       if(!d||!(hr>=EB.runLo&&hr<=EB.runHi)||(a.moving_time||0)<EFF_MIN.run.minSec||!(a.distance>0)||!isSteady(a)) return null;
       const pace=a.moving_time/(a.distance/1000);
-      return {x:+d, y:pace, tip:dfmt(d)+" · "+paceFmt(pace)+"/km @ "+Math.round(hr)+" bpm"}; }).filter(Boolean);
-  scatter($("#ch-runeff"), run, {color:COLORS.run, invert:true, yfmt:v=>paceFmt(v),
+      return {x:+d, y:pace, tip:dfmt(d)+" · "+paceFmt(pace)+"/km @ "+Math.round(hr)+" bpm"}; }).filter(Boolean).filter(p=>p.x>=cut);
+  scatter($("#ch-runeff"), run, {color:COLORS.run, invert:true, yfmt:v=>paceFmt(v), minTrend:5,
     emptyTitle:"Ingen löptrend än", emptyIcon:"trend",
     empty:"Två Z2-löppass på minst 30 min behövs innan tempo-vid-puls börjar säga något."});
   const swimEl=$("#ch-swim");
   const swim=acts.filter(a=>sportOf(a)==="swim"&&a.distance>=EFF_MIN.swim.minM&&a.moving_time>0).map(a=>{ const d=actDate(a);
       const pace=100*a.moving_time/a.distance;
-      return {x:+d, y:pace, tip:dfmt(d)+" · "+paceFmt(pace)+"/100 m · "+Math.round(a.distance)+" m"}; });
-  const cont=ms.filter(m=>m.gren==="swim"&&m.varde&&(m.done||m.plan)).map(m=>({d:m.done||m.plan, v:m.varde})).sort((a,b)=>a.d-b.d);
+      return {x:+d, y:pace, tip:dfmt(d)+" · "+paceFmt(pace)+"/100 m · "+Math.round(a.distance)+" m"}; }).filter(p=>p.x>=cut);
+  const cont=ms.filter(m=>m.gren==="swim"&&m.varde&&(m.done||m.plan)).map(m=>({d:m.done||m.plan, v:m.varde})).filter(c=>+c.d>=cut).sort((a,b)=>a.d-b.d);
   let extra="";
   if(cont.length){ const mx=Math.max(...cont.map(c=>c.v));
     extra='<div class="chart swimbars" style="display:flex;gap:6px;align-items:flex-end;height:34px;margin-bottom:8px;position:relative">'+
@@ -1161,7 +1171,7 @@ function renderEfficiency(ms){
       b.addEventListener("mouseenter",()=>{ if(pinned===null) act(b); });
       b.addEventListener("mouseleave",()=>{ if(pinned===null) deact(); }); });
     sbWrap.addEventListener("click",()=>{ pinned=null; deact(); }); }
-  scatter($("#ch-swim-pace"), swim, {color:COLORS.swim, invert:true, yfmt:v=>paceFmt(v),
+  scatter($("#ch-swim-pace"), swim, {color:COLORS.swim, invert:true, yfmt:v=>paceFmt(v), minTrend:5,
     emptyTitle:"Ingen simtrend än", emptyIcon:"wave",
     empty:"Ladda upp ett par pool-pass (TCX) så ritas tempo per 100 m här."});
 }
@@ -1288,6 +1298,8 @@ function toast(msg){
 }
 let formSeg="belastning";
 let formSpan=90;
+let effSpan=9999;   // effektivitetsgraferna: default Säsong (signalen bor i det långa)
+let volSpan=12;     // veckovolym: default 12 veckor (nuvarande block)
 function switchSeg(seg){
   formSeg=seg;
   document.querySelectorAll(".form-group").forEach(g=>g.hidden = g.getAttribute("data-seg")!==seg);
