@@ -140,17 +140,42 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 
 /* ---------- Flaggor ---------- */
 #flags{display:flex; flex-direction:column; gap:var(--s2); margin-top:var(--s3)}
-.flag{display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border-radius:12px;
+.flag{display:block; padding:0; border-radius:12px; margin-bottom:8px;
   background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--mut); font-size:14px;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
 .flag.risk{border-left-color:var(--risk); border-left-width:4px; background:linear-gradient(90deg,rgba(226,72,58,.10),rgba(226,72,58,0) 60%)}
 .flag.warn{border-left-color:var(--warn)}
 .flag.ok{border-left-color:var(--ok); color:var(--mut)}
+.flag-head{display:flex; gap:10px; align-items:flex-start; justify-content:space-between; width:100%;
+  padding:12px 14px; background:none; border:0; text-align:left; color:inherit; cursor:pointer; font:inherit}
+.flag .fh-txt{display:block}
 .flag .tag{font-family:var(--disp); font-weight:600; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; display:block; margin-bottom:2px}
 .flag.risk .tag{color:var(--risk)} .flag.warn .tag{color:var(--warn)} .flag.ok .tag{color:var(--ok)}
 .flag.risk b{font-size:14.5px}
 .flag b{display:block; font-size:13.5px}
-.flag .d{color:var(--mut); font-size:13px}
+.flag-head .chev{transition:transform .2s; color:var(--faint); font-size:18px; line-height:1.2; flex:0 0 auto}
+.flag.open .flag-head .chev{transform:rotate(90deg)}
+.flag-body{padding:0 14px 12px 14px}
+.flag-body p{margin:8px 0 0; font-size:13px; color:var(--mut); line-height:1.45}
+.flag-body .fl-lbl{display:block; font-family:var(--disp); font-weight:600; font-size:9.5px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--faint); margin-bottom:1px}
+.focus{position:relative; padding:14px 16px; border-radius:16px; margin-bottom:12px;
+  background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--accent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.focus[role=button]{cursor:pointer}
+.focus.risk{border-left-color:var(--risk); background:linear-gradient(100deg,rgba(226,72,58,.12),rgba(226,72,58,0) 65%)}
+.focus.warn{border-left-color:var(--warn); background:linear-gradient(100deg,rgba(224,137,47,.10),rgba(224,137,47,0) 65%)}
+.focus.accent{border-left-color:var(--accent); background:linear-gradient(100deg,rgba(91,147,230,.10),rgba(91,147,230,0) 65%)}
+.focus.ok{border-left-color:var(--ok)}
+.focus-ey{font-family:var(--disp); font-weight:600; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:7px}
+.focus.risk .focus-ey{color:var(--risk)} .focus.warn .focus-ey{color:var(--warn)} .focus.ok .focus-ey{color:var(--ok)}
+.focus-main{display:flex; align-items:center; gap:11px}
+.focus-dot{flex:0 0 auto; width:11px; height:11px; border-radius:50%; margin-top:3px; align-self:flex-start}
+.focus-txt{flex:1; min-width:0}
+.focus-txt b{display:block; font-size:17px; line-height:1.25; color:var(--ink)}
+.focus-sub{display:block; font-size:12.5px; color:var(--mut); margin-top:2px}
+.focus-main .chev{flex:0 0 auto; color:var(--faint); font-size:20px; align-self:center}
+.focus-why{margin-top:9px; padding-top:9px; border-top:1px solid var(--line); font-size:12.5px; color:var(--mut); line-height:1.45}
 
 /* ---------- Delmål ---------- */
 .msgroup{margin-bottom:14px}
@@ -439,6 +464,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
         <div class="tl-band" id="tl-band" role="list" aria-label="Periodisering"></div>
         <div class="tl-detail" id="tl-detail"></div>
       </div>
+      <div id="focus"></div>
       <div id="nextkey"></div>
       <div id="flags" aria-live="polite"></div>
       <div id="flaglog"></div>
@@ -776,27 +802,40 @@ function computeFlags(weeks, plan, inten, ms){
   const flags=[], t=today();
   const cw=weeks[weeks.length-1];
   if(cw && cw.cap!=null && cw.runKm > cw.cap)
-    flags.push({key:"run-cap", lv:"risk", t:"Löpvolymen sprängde taket",
-      d:"Du ligger "+n1(cw.runKm-cw.cap)+" km över veckans tak ("+n1(cw.runKm)+" mot "+n1(cw.cap)+" km). Korta eller stryk nästa löppass — en så snabb ökning är inte värd skaderisken så här nära tävlingen."});
+    flags.push({key:"run-cap", lv:"risk", t:"Du har sprungit mer än planerat",
+      why:"Veckans löpvolym ligger "+n1(cw.runKm-cw.cap)+" km över taket ("+n1(cw.runKm)+" mot "+n1(cw.cap)+" km) — en snabbare ökning än de senaste veckornas trend.",
+      matter:"Konditionen hänger med på snabba volymhopp, men inte benstommen — det är så överbelastningsskador uppstår.",
+      act:"Korta nästa löppass, eller byt det mot ett cykelpass."});
   const lastSwim=data.activities.filter(a=>sportOf(a)==="swim").map(actDate).sort((a,b)=>b-a)[0];
   if(data.activities.length){
     const gap=lastSwim? Math.floor((t-lastSwim)/DAY) : 99;
-    if(gap>7) flags.push({key:"swim-gap", lv:"risk", t:"Simningen har glappat",
-      d:(lastSwim? "Det var "+gap+" dagar sedan du sam." : "Inget simpass i datan.")+" Boka ett simpass den här veckan — vattenkänslan tappas snabbast vid uppehåll, och det märks i öppet vatten."}); }
+    if(gap>7) flags.push({key:"swim-gap", lv:"risk", t:"Det var ett tag sedan du sam",
+      why:(lastSwim? "Det är "+gap+" dagar sedan ditt senaste simpass." : "Det finns inget simpass i datan."),
+      matter:"Vattenkänslan tappas snabbast av allt vid uppehåll, och det märks direkt i öppet vatten.",
+      act:"Boka in ett simpass den här veckan."}); }
   for(const m of ms){ if(m.status!=="done"&&m.plan&&m.plan<=addDays(t,7)&&!m.done){
-    flags.push({key:"milestone-risk", lv:"warn", t:"Ett delmål håller på att rinna iväg", d:"”"+m.desc+"” skulle vara klart "+dfmt(m.plan)+". Planera in det den här veckan eller flytta det medvetet — låt det inte bara glida."}); break; } }
+    flags.push({key:"milestone-risk", lv:"warn", t:"Ett delmål håller på att rinna iväg",
+      why:"”"+m.desc+"” skulle vara klart "+dfmt(m.plan)+".",
+      matter:"Delmål som glider utan beslut är den vanligaste orsaken till att en plan spårar ur — inte dåliga pass.",
+      act:"Planera in det den här veckan, eller flytta det medvetet i Delmål-fliken."}); break; } }
   const ph=currentPhase(plan);
   if(inten && ph && ph.target!=null && Math.abs(inten.loPct-ph.target)>10){
     if(inten.loPct<ph.target)
-      flags.push({key:"intensity-high", lv:"warn", t:"Du har kört för hårt",
-        d:"Bara "+Math.round(inten.loPct)+" % lågintensivt senaste 14 dagarna — fasen ("+esc(ph.name)+") vill ha ~"+ph.target+" %. Lägg nästa par pass i Z2. Du bygger ingen form i gråzonen, bara trötthet."});
+      flags.push({key:"intensity-high", lv:"warn", t:"Du har kört för hårt på sistone",
+        why:"Bara "+Math.round(inten.loPct)+" % lågintensivt de senaste 14 dagarna — fasen ("+ph.name+") vill ha ~"+ph.target+" %.",
+        matter:"Du bygger ingen aerob form i gråzonen, bara trötthet.",
+        act:"Lägg nästa par pass i Z2."});
     else
-      flags.push({key:"intensity-low", lv:"warn", t:"Mycket lugnt på sistone",
-        d:Math.round(inten.loPct)+" % lågintensivt mot fasens ~"+ph.target+" %. Om kroppen är pigg tål den ett kvalitetspass till den här veckan."}); }
+      flags.push({key:"intensity-low", lv:"warn", t:"Det har varit lugnt ett tag",
+        why:Math.round(inten.loPct)+" % lågintensivt mot fasens ~"+ph.target+" %.",
+        matter:"Inget fel i sig — men om kroppen är pigg har du utrymme för mer kvalitet.",
+        act:"Lägg in ett kvalitetspass den här veckan om du känner dig redo."}); }
   const hard5=data.activities.filter(a=>{ const d=actDate(a); if(!d||d<addDays(t,-5)) return false;
     const z=zones(a); if(!z) return false; let s=0; for(let i=3;i<z.length;i++) s+=z[i]||0; return s>=1200; });
   if(hard5.length>=3) flags.push({key:"hard-freq", lv:"warn", t:"Tre hårda pass på kort tid",
-    d:hard5.length+" pass med ≥20 min i Z4+ de senaste 5 dagarna. Lägg in en lätt dag eller vila innan nästa kvalitetspass — annars tränar du sönder formen istället för att bygga den."});
+    why:hard5.length+" pass med minst 20 min i Z4+ de senaste 5 dagarna.",
+    matter:"Tätt staplad hög intensitet tränar sönder formen istället för att bygga den.",
+    act:"Lägg in en lätt dag eller vila innan nästa kvalitetspass."});
   const rhr=data.wellness.map(w=>({d:pd(w.id), v:w.restingHR??w.resting_hr})).filter(x=>x.d&&x.v>0).sort((a,b)=>a.d-b.d);
   if(rhr.length>=20){
     const last7=rhr.filter(x=>x.d>=addDays(t,-7));
@@ -804,7 +843,9 @@ function computeFlags(weeks, plan, inten, ms){
     if(last7.length>=4&&base.length>=14){
       const m7=last7.reduce((s,x)=>s+x.v,0)/last7.length, mb=base.reduce((s,x)=>s+x.v,0)/base.length;
       if(m7-mb>5) flags.push({key:"rhr", lv:"warn", t:"Vilopulsen är förhöjd",
-        d:"Den ligger "+n1(m7-mb)+" slag över din 30-dagarsnormal ("+Math.round(m7)+" mot "+Math.round(mb)+"). Något tär på dig — sömn, stress eller en infektion på väg. Sänk intensiteten tills den vänder ner igen."}); } }
+        why:"Den ligger "+n1(m7-mb)+" slag över din 30-dagarsnormal ("+Math.round(m7)+" mot "+Math.round(mb)+").",
+        matter:"Förhöjd vilopuls betyder ofta att något tär — sömn, stress eller en infektion på väg.",
+        act:"Sänk intensiteten tills den vänder ner igen."}); } }
   return flags; }
 
 /* ============ SVG-hjälpare ============ */
@@ -919,11 +960,24 @@ function renderTimeline(plan){
     tools.appendChild(b); wrap.appendChild(tools); }
 }
 
-function renderFlags(flags){
+function renderFlags(flags, excludeKey){
   const c=$("#flags");
-  if(!flags.length){ c.innerHTML='<div class="flag ok"><div><span class="tag">På plan</span><b style="color:var(--ok)">Allt rullar enligt plan</b><span class="d">Inget att reagera på just nu. Fortsätt som du gör.</span></div></div>'; return; }
+  const list = excludeKey ? flags.filter(f=>f.key!==excludeKey) : flags;
+  if(!list.length){ c.innerHTML='<div class="flag ok"><div class="flag-head" style="cursor:default"><span class="fh-txt"><span class="tag">På plan</span><b style="color:var(--ok)">Allt rullar enligt plan</b></span></div></div>'; return; }
   const tag={risk:"Åtgärd", warn:"Se över", ok:"På plan"};
-  c.innerHTML=flags.map(f=>'<div class="flag '+f.lv+'"><div><span class="tag">'+tag[f.lv]+'</span><b>'+esc(f.t)+'</b><span class="d">'+esc(f.d)+'</span></div></div>').join("");
+  c.innerHTML=list.map(f=>'<div class="flag '+f.lv+'">'+
+    '<button type="button" class="flag-head" aria-expanded="false">'+
+      '<span class="fh-txt"><span class="tag">'+tag[f.lv]+'</span><b>'+esc(f.t)+'</b></span>'+
+      '<span class="chev">›</span></button>'+
+    '<div class="flag-body" hidden>'+
+      '<p><span class="fl-lbl">Varför du ser detta</span>'+esc(f.why)+'</p>'+
+      '<p><span class="fl-lbl">Varför det spelar roll</span>'+esc(f.matter)+'</p>'+
+      '<p><span class="fl-lbl">Gör så här</span>'+esc(f.act)+'</p>'+
+    '</div></div>').join("");
+  c.querySelectorAll(".flag-head").forEach(btn=>btn.addEventListener("click",()=>{
+    const fl=btn.parentElement, body=fl.querySelector(".flag-body"); if(!body) return;
+    const willOpen=body.hidden; body.hidden=!willOpen; btn.setAttribute("aria-expanded", willOpen?"true":"false");
+    fl.classList.toggle("open", willOpen); }));
 }
 
 let msDoneOpen=false;
@@ -1265,7 +1319,7 @@ function buildReport(){
   if(inten){ const ph=currentPhase(plan);
     L.push("Intensitet 14 d: "+Math.round(inten.loPct)+" % lågintensivt"+(ph&&ph.target!=null? " — fasmål ~"+ph.target+" % ("+ph.name+")":"")); }
   L.push(flags.length? "Flaggor:" : "Flaggor: inga");
-  for(const f of flags) L.push("• "+f.t+" — "+f.d);
+  for(const f of flags) L.push("• "+f.t+" — "+f.why+" "+f.act);
   const due=ms.filter(m=>m.status!=="done"&&m.plan&&m.plan<=addDays(t,14)).sort((a,b)=>a.plan-b.plan);
   if(due.length){ L.push("Delmål inom 14 dagar:");
     for(const m of due) L.push("• "+m.desc+" ("+dfmt(m.plan)+")"); }
@@ -1484,8 +1538,54 @@ function renderFlagLog(log){
   h.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();tg();} });
 }
 
-function renderNextKey(){
+function pickFocus(plan, flags, ms){
+  const t=today();
+  const urgent=(ms||[]).filter(m=>m.status!=="done"&&!m.done&&m.plan&&m.plan<=addDays(t,10)).sort((a,b)=>a.plan-b.plan)[0];
+  if(urgent) return {kind:"ms", m:urgent, excludeKey:"milestone-risk", tookNextKey:true};
+  const risk=flags.find(f=>f.lv==="risk");
+  if(risk) return {kind:"flag", flag:risk, excludeKey:risk.key};
+  const nm=nextMilestone(ms);
+  if(nm) return {kind:"ms", m:nm, tookNextKey:true};
+  const warn=flags.find(f=>f.lv==="warn");
+  if(warn) return {kind:"flag", flag:warn, excludeKey:warn.key};
+  return {kind:"calm"};
+}
+function renderFocus(focus, plan){
+  const c=$("#focus"); if(!c) return;
+  const t=today();
+  let lvl="ok", color="var(--accent)", label="", sub="", why="", nav=null;
+  if(focus.kind==="ms"){
+    const m=focus.m, nd=Math.ceil((m.plan-t)/DAY);
+    const when = nd<0? "försenat" : nd===0? "idag" : nd<=7? "om "+nd+(nd===1?" dag":" dgr") : dfmt(m.plan);
+    lvl = nd<0? "risk" : "accent";
+    color = COLORS[m.gren]||COLORS.other;
+    label = "Genomför: "+m.desc;
+    sub = (nd<0? "var planerat "+dfmt(m.plan) : "deadline "+dfmt(m.plan))+" · "+when;
+    why = m.note || "";
+    nav = "plan";
+  } else if(focus.kind==="flag"){
+    const f=focus.flag;
+    lvl = f.lv; color = f.lv==="risk"? "var(--risk)" : "var(--warn)";
+    label = f.t; sub = f.act; why = f.why; nav = "form";
+  } else {
+    const ph=currentPhase(plan);
+    lvl="ok"; color="var(--ok)";
+    label = "Inga röda flaggor den här veckan";
+    sub = ph ? "Fasen "+ph.name+" — håll planen." : "Håll planen och fortsätt som du gör.";
+  }
+  c.innerHTML='<div class="focus '+lvl+'"'+(nav?' role="button" tabindex="0"':'')+'>'+
+    '<div class="focus-ey">Veckans fokus</div>'+
+    '<div class="focus-main"><span class="focus-dot" style="background:'+color+'"></span>'+
+      '<span class="focus-txt"><b>'+esc(label)+'</b>'+(sub?'<span class="focus-sub">'+esc(sub)+'</span>':'')+'</span>'+
+      (nav?'<span class="chev">›</span>':'')+'</div>'+
+    (why?'<div class="focus-why">'+esc(why)+'</div>':'')+'</div>';
+  if(nav){ const el=c.querySelector(".focus"), go=()=>switchTab(nav);
+    el.addEventListener("click",go);
+    el.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();go();} }); }
+}
+function renderNextKey(focus){
   const c=$("#nextkey"); if(!c) return;
+  if(focus && focus.tookNextKey){ c.innerHTML=""; return; }
   const nm=nextMilestone(); const t=today();
   if(!nm){ c.innerHTML=""; return; }
   const nd=Math.ceil((nm.plan-t)/DAY);
@@ -1674,9 +1774,11 @@ function renderAll(ts){
   renderHeader(plan);
   $("#tl-band").parentElement.querySelectorAll(".tl-today").forEach(e=>e.remove());
   renderTimeline(plan);
-  renderNextKey();
   const flags=computeFlags(weeks, plan, inten, ms);
-  renderFlags(flags);
+  const focus=pickFocus(plan, flags, ms);
+  renderFocus(focus, plan);
+  renderNextKey(focus);
+  renderFlags(flags, focus.excludeKey);
   renderFlagLog(processFlagLog(flags));
   renderRace(plan);
   renderReadiness(plan, ms);
