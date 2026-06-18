@@ -693,8 +693,8 @@ async function refreshAll(){
   $("#btn-refresh").disabled=true; $("#btn-refresh").classList.add("spin");
   const t=today();
   const tasks={
-    activities: fetchIntervals("/activities?oldest="+iso(addDays(t,-285))+"&newest="+iso(addDays(t,1))),
-    wellness:   fetchIntervals("/wellness?oldest="+iso(addDays(t,-285))+"&newest="+iso(t)),
+    activities: fetchIntervals("/activities?oldest="+iso(addDays(t,-370))+"&newest="+iso(addDays(t,1))),
+    wellness:   fetchIntervals("/wellness?oldest="+iso(addDays(t,-370))+"&newest="+iso(t)),
     plan:       cfg.planUrl? fetchMaybeProxy(cfg.planUrl).then(r=>r.text()).then(parseCSV) : Promise.resolve([]),
     milestones: cfg.msUrl?   fetchMaybeProxy(cfg.msUrl).then(r=>r.text()).then(parseCSV)   : Promise.resolve([]),
     race:       cfg.raceUrl? fetchMaybeProxy(cfg.raceUrl).then(r=>r.text()).then(parseCSV) : Promise.resolve([])
@@ -1315,11 +1315,11 @@ function readyTargets(plan, legs){
   return {swim:pick("swim"), bike:pick("bike"), run:pick("run")};
 }
 function longestBySport(cut){
-  const m={swim:0,bike:0,run:0};
+  const m={swim:{v:0,d:null},bike:{v:0,d:null},run:{v:0,d:null}};
   for(const a of data.activities){ const d=actDate(a); if(!d||d<cut) continue;
-    const s=sportOf(a); if(m[s]===undefined) continue;
-    if((a.distance||0)>m[s]) m[s]=a.distance||0; }
-  return {swim:m.swim, bike:m.bike/1000, run:m.run/1000}; // sim meter, cykel/löp km
+    const s=sportOf(a); if(!m[s]) continue;
+    if((a.distance||0)>m[s].v){ m[s].v=a.distance||0; m[s].d=d; } }
+  return {swim:{v:m.swim.v,d:m.swim.d}, bike:{v:m.bike.v/1000,d:m.bike.d}, run:{v:m.run.v/1000,d:m.run.d}}; // sim meter, cykel/löp km
 }
 function longestBrick(cut, ms){
   const mb=(ms||[]).filter(x=>x.gren==="brick"&&x.varde).map(x=>x.varde);
@@ -1339,25 +1339,36 @@ function renderReadiness(plan, ms){
   const cap=monday(addDays(today(),-7*52)); let startW=cap;
   if(plan.phases.length){ const ps=monday(plan.phases[0].start); if(ps>startW) startW=ps; }
   const legs=getRace(plan), tg=readyTargets(plan, legs), lo=longestBySport(startW), brick=longestBrick(startW, ms);
+  // Simning: längsta SAMMANHÄNGANDE från delmål (total passdistans ljuger pga uppvärmning/teknik/intervaller)
+  let swimBest=0, swimDate=null;
+  for(const m of (ms||[])){ if(m.gren==="swim"&&m.varde&&m.varde>swimBest){ swimBest=m.varde; swimDate=m.done||m.plan; } }
+  lo.swim={v:swimBest, d:swimDate, fromMs:true};
   const anyTarget = tg.swim!=null||tg.bike!=null||tg.run!=null;
   const fmtD=(k,v)=> k==="swim"? Math.round(v)+" m" : n1(v)+" km";
   const GRENS=[["swim","Simning",COLORS.swim],["bike","Cykel",COLORS.bike],["run","Löpning",COLORS.run]];
   let body='<div style="font-weight:600;font-size:14px;margin-bottom:2px">Beredskap inför '+esc(r.name)+'</div>'+
-    '<div class="cardsub" style="margin-bottom:12px">'+(anyTarget?"Längsta pass mot loppets distanser":"Längsta pass den här säsongen")+'</div>';
+    '<div class="cardsub" style="margin-bottom:12px">'+(anyTarget?"Längsta sträcka mot loppets distanser":"Längsta sträcka den här säsongen")+'</div>';
   for(const [k,label,col] of GRENS){
-    const got=lo[k], tgt=tg[k];
+    const got=lo[k].v, tgt=tg[k], dt=lo[k].d;
+    const tip = dt? ' title="Längsta '+(k==="swim"?"sammanhängande sim":"pass")+': '+esc(dfmt(dt))+'"' : '';
+    if(k==="swim" && lo.swim.fromMs && swimBest===0){
+      body+='<div class="ready-row"><span class="rg" style="color:'+col+'">'+label+'</span>'+
+        '<span class="rbar"></span><span class="rv" style="color:var(--faint)">logga längsta sammanhängande som delmål</span></div>';
+      continue;
+    }
     if(tgt!=null){
       const pct=Math.round(got/tgt*100), w=Math.min(100,pct);
       const fill = pct>=100?"var(--ok)" : pct>=70?"var(--accent)" : "#3E5A78";
-      body+='<div class="ready-row"><span class="rg" style="color:'+col+'">'+label+'</span>'+
+      body+='<div class="ready-row"'+tip+'><span class="rg" style="color:'+col+'">'+label+'</span>'+
         '<span class="rbar"><i style="width:'+w+'%;background:'+fill+'"></i></span>'+
         '<span class="rv">'+fmtD(k,got)+' / '+fmtD(k,tgt)+' · '+pct+'%</span></div>';
     } else {
-      body+='<div class="ready-row"><span class="rg" style="color:'+col+'">'+label+'</span>'+
+      body+='<div class="ready-row"'+tip+'><span class="rg" style="color:'+col+'">'+label+'</span>'+
         '<span class="rbar"></span><span class="rv">längsta '+fmtD(k,got)+'</span></div>';
     }
   }
   if(brick) body+='<div class="ready-brick">Längsta brick: <b>'+n1(brick.km)+' km</b> <span style="color:var(--faint)">('+brick.src+')</span></div>';
+  body+='<div class="ready-note">Sim = längsta <b>sammanhängande</b> (från delmål). Cykel/löp = längsta pass. Håll musen över en rad för datum.</div>';
   if(!anyTarget) body+='<div class="ready-note">Ingen känd loppkategori. Sätt <code>kategori</code> i Plan-fliken (t.ex. Olympisk distans, Ironman 70.3) eller <code>distans</code> per gren i Race-fliken för beredskap mot målen.</div>';
   card.innerHTML=body;
 }
