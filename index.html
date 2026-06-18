@@ -325,6 +325,13 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 .zgrid .zf input{width:100%; padding:8px 10px; border-radius:9px; border:1px solid var(--line);
   background:var(--surface-lo); color:var(--ink); font-size:15px; font-variant-numeric:tabular-nums}
 .zhint{font-size:11.5px; color:var(--faint); margin:0 0 6px}
+.ready-row{display:flex; align-items:center; gap:10px; margin:9px 0}
+.ready-row .rg{flex:0 0 62px; font-size:12.5px; font-weight:600}
+.ready-row .rbar{flex:1; height:8px; background:#16202C; border-radius:5px; overflow:hidden}
+.ready-row .rbar i{display:block; height:100%; border-radius:5px; transition:width .3s}
+.ready-row .rv{flex:0 0 auto; font-size:12px; color:var(--mut); font-variant-numeric:tabular-nums}
+.ready-brick{font-size:12.5px; color:var(--mut); margin-top:11px; padding-top:10px; border-top:1px solid var(--line)}
+.ready-note{font-size:11.5px; color:var(--faint); margin-top:10px}
 
 /* ---------- Flikar ---------- */
 .tabpanel{animation:fade .18s ease}
@@ -530,6 +537,10 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 
   <!-- ===== TÄVLING ===== -->
   <div class="tabpanel" id="tab-tavling" data-tab="tavling" hidden>
+    <section id="sec-ready">
+      <h2>Beredskap <small>längsta pass den här säsongen mot loppets krav</small></h2>
+      <div class="card" id="ready-card"></div>
+    </section>
     <section id="sec-race">
       <h2>Tävlingsdag <small id="race-sub"></small></h2>
       <div class="card" id="race-card"></div>
@@ -584,8 +595,8 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
       <p><code>gren</code> <code>beskrivning</code> <code>plandatum</code> <code>faktiskt</code> <code>status</code> <code>varde</code> <code>anteckning</code></p>
       <p>gren = sim/cykel/löp/brick/styrka · status = klart/pågår/skjutet/risk (tomt = planerat) · varde = valfri siffra, t.ex. längsta kontinuerliga simdistans i meter.</p>
       <h3>Flik <b>Race</b> (valfri — visar tävlingsdagskortet)</h3>
-      <p><code>race</code> <code>gren</code> <code>mal</code> <code>split</code> <code>strategi</code></p>
-      <p>En rad per gren: gren = Sim/T1/Cykel/T2/Löp/Total. mal = mål (t.ex. 2:05/100m, 225 W). split = beräknad tid. strategi = en rad coach-instruktion. race = tävlingens namn (matchar Plan); lämna tomt så gäller raden närmaste tävling.</p>
+      <p><code>race</code> <code>gren</code> <code>mal</code> <code>split</code> <code>strategi</code> <code>distans</code></p>
+      <p>En rad per gren: gren = Sim/T1/Cykel/T2/Löp/Total. mal = mål (t.ex. 2:05/100m, 225 W). split = beräknad tid. strategi = en rad coach-instruktion. race = tävlingens namn (matchar Plan); lämna tomt så gäller raden närmaste tävling. distans = valfri, för beredskapskortet vid udda lopp (sim i meter, cykel/löp i km) — vanliga kategorier behöver den inte.</p>
       <h3>3 · Publicera flikarna som CSV</h3>
       <ol>
         <li>I Sheet: Arkiv → Dela → <b>Publicera på webben</b>.</li>
@@ -948,12 +959,23 @@ function renderVolume(weeks, plan){
   const el=$("#ch-volume");
   const vs=$("#vol-span"); if(vs){ vs.innerHTML=[[12,"12 v"],[9999,"Säsong"]].map(o=>'<button type="button" data-d="'+o[0]+'"'+(volSpan===o[0]?' class="active"':'')+'>'+o[1]+'</button>').join("");
     vs.querySelectorAll("button").forEach(btn=>btn.addEventListener("click",()=>{ volSpan=+btn.getAttribute("data-d"); renderVolume(weeks, plan); })); }
-  const wk = volSpan>=9000 ? weeks : weeks.slice(-volSpan);
+  let wk;
+  if(volSpan>=9000){
+    const cap=monday(addDays(today(),-7*52));           // 12-månaders skyddsräcke
+    let startW=cap;
+    if(plan.phases.length){ const ps=monday(plan.phases[0].start); if(ps>startW) startW=ps; } // ankra vid första fasen
+    wk=weeks.filter(w=>w.start>=startW);
+    const fi=wk.findIndex(w=>Object.values(w.vol).reduce((a,b)=>a+b,0)>0.017); // trimma tomma inledande veckor
+    wk = fi<0 ? weeks.slice(-12) : (fi>0 ? wk.slice(fi) : wk);
+  } else { wk=weeks.slice(-volSpan); }
   const anyData=wk.some(w=>Object.values(w.vol).reduce((a,b)=>a+b,0)>0.017);
   if(!anyData){ el.innerHTML=emptyState("Ingen volym än","Så fort dina pass synkar från intervals.icu ritas veckovolymen per gren här.","bars"); $("#lg-volume").innerHTML=""; return; }
   const W=460,H=200,pad={l:32,r:8,t:16,b:26}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
   const max=Math.max(1,...wk.map(w=>Object.values(w.vol).reduce((a,b)=>a+b,0)));
   const bw=iw/wk.length;
+  const wIdx=d=>Math.round((monday(d)-wk[0].start)/6048e5);   // veckoindex för ett datum
+  const pmarks = volSpan>=9000 ? plan.phases.map(p=>({i:wIdx(p.start), name:p.name})).filter(m=>m.i>0&&m.i<wk.length) : [];
+  const lblStep=Math.max(1,Math.ceil(wk.length/10));          // ≤ ~10 etiketter oavsett spann
   let s=svgOpen(W,H);
   wk.forEach((w,i)=>{ const isRest=plan.rests.some(r=>w.start>=monday(r.start)&&w.start<=r.end);
     if(isRest) s+='<rect x="'+(pad.l+i*bw)+'" y="'+pad.t+'" width="'+bw+'" height="'+ih+'" fill="#FFFFFF" opacity="0.035"/>'; });
@@ -961,6 +983,7 @@ function renderVolume(weeks, plan){
     s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+y+'" y2="'+y+'" stroke="#19232F" stroke-width="1"/>';
     s+=txt(pad.l-6, y+3, n1(max*gy)+" h", "#5C687C", 9, "end"); }
   s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+(pad.t+ih)+'" y2="'+(pad.t+ih)+'" stroke="#243140" stroke-width="1"/>';
+  pmarks.forEach(m=>{ const x=pad.l+m.i*bw; s+='<line x1="'+x.toFixed(1)+'" x2="'+x.toFixed(1)+'" y1="'+pad.t+'" y2="'+(pad.t+ih)+'" stroke="#3A4A5E" stroke-width="1" stroke-dasharray="2 3" opacity="0.6"/>'; });
   const order=["swim","bike","run","strength","other"];
   const cols=[];
   wk.forEach((w,i)=>{ let y=pad.t+ih; const x=pad.l+i*bw+bw*0.22, wpx=bw*0.56;
@@ -970,11 +993,12 @@ function renderVolume(weeks, plan){
       const top = si===segs.length-1;
       s+='<rect x="'+x+'" y="'+y+'" width="'+wpx+'" height="'+h+'" fill="'+COLORS[k]+'" rx="'+(top?2:0)+'"/>';
       y-=1; });
-    if(i%2===(wk.length-1)%2) s+=txt(pad.l+i*bw+bw/2, H-8, "v"+weekNo(w.start), "#5C687C", 9, "middle");
+    if((wk.length-1-i)%lblStep===0) s+=txt(pad.l+i*bw+bw/2, H-8, "v"+weekNo(w.start), "#5C687C", 9, "middle");
     const tot=order.reduce((a,k)=>a+w.vol[k],0);
     const parts=order.filter(k=>w.vol[k]>0.017).map(k=>SPORT_LABEL[k]+" "+hm(w.vol[k]));
     cols.push({cx:pad.l+i*bw+bw/2, tip:'<span class="h">v'+weekNo(w.start)+' · totalt '+hm(tot)+'</span><br>'+(parts.join(" · ")||"inga pass")}); });
   wk.forEach((w,i)=>{ s+='<rect class="hit" data-i="'+i+'" x="'+(pad.l+i*bw)+'" y="'+pad.t+'" width="'+bw+'" height="'+ih+'" fill="transparent"/>'; });
+  pmarks.forEach(m=>{ const x=pad.l+m.i*bw; s+=txt(x+3, pad.t+9, m.name, "#8090A6", 8.5, "start"); });
   s+="</svg>";
   el.innerHTML=s;
   barTips(el, W, cols);
@@ -1259,12 +1283,84 @@ function getRace(plan){
   const focus=(plan.race&&plan.race.name||"").toLowerCase().trim();
   const rows=data.race.map(r=>({
     race:(r.race||"").trim(), gren:(r.gren||"").trim(), mal:(r.mal||"").trim(),
-    split:(r.split||"").trim(), strategi:(r.strategi||"").trim() }))
+    split:(r.split||"").trim(), strategi:(r.strategi||"").trim(), distans:(r.distans||"").trim() }))
     .filter(r=>r.gren||r.mal||r.split||r.strategi);
   // Rader för fokustävlingen: matchar namn (delsträng åt båda håll) eller har tomt race-fält.
   const mine=rows.filter(r=>{ if(!r.race) return true; const rn=r.race.toLowerCase();
     return focus && (focus.includes(rn)||rn.includes(focus)); });
   return mine; }
+
+/* Loppdistanser per kategori — sim i meter, cykel/löp i km. Matchas mot race-radens kategori. */
+const RACE_DIST={
+  sprint:{swim:750,bike:20,run:5}, olympisk:{swim:1500,bike:40,run:10},
+  "70.3":{swim:1900,bike:90,run:21.1}, ironman:{swim:3800,bike:180,run:42.2},
+  marathon:{run:42.2}, halvmarathon:{run:21.1}
+};
+function raceCategoryKey(cat){
+  const c=(cat||"").toLowerCase(); if(!c) return null;
+  if(/70\.?3|half\s*iron|halv\s*iron/.test(c)) return "70.3";
+  if(/ironman|140\.?6|full\s*dist/.test(c)) return "ironman";
+  if(/olymp/.test(c)) return "olympisk";
+  if(/sprint/.test(c)) return "sprint";
+  if(/(halv|half).*mara/.test(c)) return "halvmarathon";
+  if(/mara(thon|ton)/.test(c)) return "marathon";
+  return null;
+}
+function readyTargets(plan, legs){
+  const ov={};
+  for(const l of legs){ const k=normGren(l.gren), v=parseFloat((l.distans||"").replace(",","."));
+    if((k==="swim"||k==="bike"||k==="run")&&v>0) ov[k]=v; }  // override (sim meter, cykel/löp km)
+  const base=RACE_DIST[raceCategoryKey(plan.race&&plan.race.cat)]||{};
+  const pick=k=>ov[k]!=null?ov[k]:(base[k]!=null?base[k]:null);
+  return {swim:pick("swim"), bike:pick("bike"), run:pick("run")};
+}
+function longestBySport(cut){
+  const m={swim:0,bike:0,run:0};
+  for(const a of data.activities){ const d=actDate(a); if(!d||d<cut) continue;
+    const s=sportOf(a); if(m[s]===undefined) continue;
+    if((a.distance||0)>m[s]) m[s]=a.distance||0; }
+  return {swim:m.swim, bike:m.bike/1000, run:m.run/1000}; // sim meter, cykel/löp km
+}
+function longestBrick(cut, ms){
+  const mb=(ms||[]).filter(x=>x.gren==="brick"&&x.varde).map(x=>x.varde);
+  if(mb.length){ const v=Math.max(...mb); return {km: v>100? v/1000 : v, src:"delmål"}; }
+  const acts=data.activities.filter(a=>{const d=actDate(a);return d&&d>=cut;}).sort((a,b)=>actDate(a)-actDate(b));
+  let best=0;
+  for(let i=0;i<acts.length-1;i++){ const a=acts[i],b=acts[i+1];
+    if(sportOf(a)!=="bike"||sportOf(b)!=="run") continue;
+    const gap=+actDate(b)-(+actDate(a)+(a.moving_time||0)*1000);
+    if(gap>=0&&gap<=30*60000){ const km=((a.distance||0)+(b.distance||0))/1000; if(km>best) best=km; } }
+  return best>0? {km:best, src:"uppskattat"} : null;
+}
+function renderReadiness(plan, ms){
+  const card=$("#ready-card"); if(!card) return;
+  const r=plan.race;
+  if(!r||r.placeholder){ card.innerHTML=emptyState("Ingen tävling inlagd","Lägg in din tävling med kategori i Plan-fliken så ser du hur dina längsta pass står sig mot loppets krav.","flag"); return; }
+  const cap=monday(addDays(today(),-7*52)); let startW=cap;
+  if(plan.phases.length){ const ps=monday(plan.phases[0].start); if(ps>startW) startW=ps; }
+  const legs=getRace(plan), tg=readyTargets(plan, legs), lo=longestBySport(startW), brick=longestBrick(startW, ms);
+  const anyTarget = tg.swim!=null||tg.bike!=null||tg.run!=null;
+  const fmtD=(k,v)=> k==="swim"? Math.round(v)+" m" : n1(v)+" km";
+  const GRENS=[["swim","Simning",COLORS.swim],["bike","Cykel",COLORS.bike],["run","Löpning",COLORS.run]];
+  let body='<div style="font-weight:600;font-size:14px;margin-bottom:2px">Beredskap inför '+esc(r.name)+'</div>'+
+    '<div class="cardsub" style="margin-bottom:12px">'+(anyTarget?"Längsta pass mot loppets distanser":"Längsta pass den här säsongen")+'</div>';
+  for(const [k,label,col] of GRENS){
+    const got=lo[k], tgt=tg[k];
+    if(tgt!=null){
+      const pct=Math.round(got/tgt*100), w=Math.min(100,pct);
+      const fill = pct>=100?"var(--ok)" : pct>=70?"var(--accent)" : "#3E5A78";
+      body+='<div class="ready-row"><span class="rg" style="color:'+col+'">'+label+'</span>'+
+        '<span class="rbar"><i style="width:'+w+'%;background:'+fill+'"></i></span>'+
+        '<span class="rv">'+fmtD(k,got)+' / '+fmtD(k,tgt)+' · '+pct+'%</span></div>';
+    } else {
+      body+='<div class="ready-row"><span class="rg" style="color:'+col+'">'+label+'</span>'+
+        '<span class="rbar"></span><span class="rv">längsta '+fmtD(k,got)+'</span></div>';
+    }
+  }
+  if(brick) body+='<div class="ready-brick">Längsta brick: <b>'+n1(brick.km)+' km</b> <span style="color:var(--faint)">('+brick.src+')</span></div>';
+  if(!anyTarget) body+='<div class="ready-note">Ingen känd loppkategori. Sätt <code>kategori</code> i Plan-fliken (t.ex. Olympisk distans, Ironman 70.3) eller <code>distans</code> per gren i Race-fliken för beredskap mot målen.</div>';
+  card.innerHTML=body;
+}
 
 let raceImminent=false;
 function renderRace(plan){
@@ -1572,11 +1668,12 @@ function renderAll(ts){
   renderFlags(flags);
   renderFlagLog(processFlagLog(flags));
   renderRace(plan);
+  renderReadiness(plan, ms);
   renderMilestones(ms);
   const es=$("#edit-sheet"); if(es) es.innerHTML = (cfg&&cfg.editUrl)
     ? '<a class="editsheet" href="'+esc(cfg.editUrl)+'" target="_blank" rel="noopener">Redigera plan &amp; delmål i Google Sheet ↗</a>'
     : '';
-  renderVolume(weeks, plan);
+  renderVolume(weeklyAgg(52), plan);
   renderRun(weeks);
   renderIntensity(inten, plan);
   renderForm();
