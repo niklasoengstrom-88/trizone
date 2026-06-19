@@ -362,6 +362,14 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 .zgrid .zf input{width:100%; padding:8px 10px; border-radius:9px; border:1px solid var(--line);
   background:var(--surface-lo); color:var(--ink); font-size:15px; font-variant-numeric:tabular-nums}
 .zhint{font-size:11.5px; color:var(--faint); margin:0 0 6px}
+.capgrid{display:flex; flex-direction:column; gap:7px; margin:4px 0 6px}
+.capf{display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:8px 11px; border-radius:10px; border:1px solid var(--line); background:var(--surface-lo)}
+.capf .capon{display:flex; align-items:center; gap:9px; cursor:pointer; font-size:14px; color:var(--ink)}
+.capf .capon input{width:18px; height:18px; accent-color:var(--accent); cursor:pointer}
+.capf .cappct{display:flex; align-items:center; gap:4px; font-size:13px; color:var(--mut)}
+.capf .cappct input{width:62px; padding:7px 9px; border-radius:8px; border:1px solid var(--line);
+  background:var(--surface); color:var(--ink); font-size:14px; font-variant-numeric:tabular-nums; text-align:right}
 .ready-row{display:flex; align-items:center; gap:10px; margin:9px 0}
 .ready-row .rg{flex:0 0 62px; font-size:12.5px; font-weight:600}
 .ready-row .rbar{flex:1; height:8px; background:#16202C; border-radius:5px; overflow:hidden}
@@ -535,8 +543,9 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
           <div class="legend" id="lg-volume"></div>
         </div>
         <div class="card">
-          <div class="cardtitle">Löpvolym & 110 %-tak</div>
-          <div class="cardsub">Km per vecka · linjen = 110 % av 3-veckors rullande snitt</div>
+          <div class="cardtitle">Volym &amp; tak</div>
+          <div class="cardsub" id="sub-cap">Km per vecka · linjen = 110 % av 3-veckors rullande snitt</div>
+          <div class="spanchips" id="cap-gren"></div>
           <div id="ch-run"></div>
           <div class="legend"><span><i style="background:var(--neutral)"></i>Inom tak</span><span><i style="background:var(--warn)"></i>Nära tak (&gt;90 %)</span><span><i style="background:var(--risk)"></i>Över tak</span></div>
         </div>
@@ -614,6 +623,13 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
       <div class="zf"><span>Cykel — högsta puls</span><input id="in-bhi" type="number" inputmode="numeric" placeholder="145"></div>
       <div class="zf"><span>Löpning — lägsta puls</span><input id="in-rlo" type="number" inputmode="numeric" placeholder="124"></div>
       <div class="zf"><span>Löpning — högsta puls</span><input id="in-rhi" type="number" inputmode="numeric" placeholder="150"></div>
+    </div>
+    <label>Volymökningstak per gren</label>
+    <p class="zhint">Ett räcke du själv sätter: appen varnar när en grens veckovolym ökar snabbare än vald procent av de tre föregående veckornas snitt. Slå på för de grenar där du vill hålla igen på snabba hopp (t.ex. löpning vid skadekänslighet). Det är inget medicinskt råd — bara en gräns du valt.</p>
+    <div class="capgrid">
+      <div class="capf"><label class="capon"><input id="in-capSwimOn" type="checkbox"><span>Simning</span></label><span class="cappct"><input id="in-capSwimPct" type="number" inputmode="numeric" placeholder="110">%</span></div>
+      <div class="capf"><label class="capon"><input id="in-capBikeOn" type="checkbox"><span>Cykel</span></label><span class="cappct"><input id="in-capBikePct" type="number" inputmode="numeric" placeholder="110">%</span></div>
+      <div class="capf"><label class="capon"><input id="in-capRunOn" type="checkbox"><span>Löpning</span></label><span class="cappct"><input id="in-capRunPct" type="number" inputmode="numeric" placeholder="110">%</span></div>
     </div>
     <div class="row">
       <button class="btn primary" id="btn-save">Spara & hämta data</button>
@@ -781,16 +797,21 @@ function currentPhase(plan){ const t=today();
 
 function weeklyAgg(nWeeks){
   const t=today(), w0=monday(t), weeks=[];
-  for(let i=nWeeks-1;i>=0;i--){ weeks.push({start:addDays(w0,-7*i), vol:{swim:0,bike:0,run:0,strength:0,other:0}, runKm:0, load:0}); }
+  for(let i=nWeeks-1;i>=0;i--){ weeks.push({start:addDays(w0,-7*i), vol:{swim:0,bike:0,run:0,strength:0,other:0}, km:{swim:0,bike:0,run:0}, runKm:0, load:0}); }
   const idx=new Map(weeks.map((w,i)=>[iso(w.start),i]));
   for(const a of data.activities){ const d=actDate(a); if(!d) continue;
     const k=iso(monday(d)); if(!idx.has(k)) continue;
     const w=weeks[idx.get(k)], s=sportOf(a);
     w.vol[s]+=(a.moving_time||0)/3600;
     w.load+=(a.icu_training_load||0);
-    if(s==="run") w.runKm+=(a.distance||0)/1000; }
-  weeks.forEach((w,i)=>{ const prev=weeks.slice(Math.max(0,i-3),i).map(x=>x.runKm);
-    w.cap = prev.length===3 ? 1.1*(prev[0]+prev[1]+prev[2])/3 : null; });
+    if(s in w.km) w.km[s]+=(a.distance||0)/1000; }
+  const cc=capCfg();
+  weeks.forEach((w,i)=>{ w.runKm=w.km.run; w.caps={};
+    for(const g of CAP_G){
+      if(!cc[g].on){ w.caps[g]=null; continue; }
+      const prev=weeks.slice(Math.max(0,i-3),i).map(x=>x.km[g]);
+      w.caps[g] = prev.length===3 ? (cc[g].pct/100)*(prev[0]+prev[1]+prev[2])/3 : null; }
+    w.cap=w.caps.run; });
   return weeks; }
 
 function intensity14(){
@@ -814,11 +835,15 @@ function nextMilestone(ms){
 function computeFlags(weeks, plan, inten, ms){
   const flags=[], t=today();
   const cw=weeks[weeks.length-1];
-  if(cw && cw.cap!=null && cw.runKm > cw.cap)
-    flags.push({key:"run-cap", lv:"risk", dim:"load", t:"Du har sprungit mer än planerat",
-      why:"Veckans löpvolym ligger "+n1(cw.runKm-cw.cap)+" km över taket ("+n1(cw.runKm)+" mot "+n1(cw.cap)+" km) — en snabbare ökning än de senaste veckornas trend.",
-      matter:"Konditionen hänger med på snabba volymhopp, men inte benstommen — det är så överbelastningsskador uppstår.",
-      act:"Korta nästa löppass, eller byt det mot ett cykelpass."});
+  if(cw && cw.caps){
+    const verb={swim:"simmat",bike:"cyklat",run:"sprungit"}, voln={swim:"sim",bike:"cykel",run:"löp"}, pass={swim:"simpass",bike:"cykelpass",run:"löppass"};
+    for(const g of CAP_G){ const cap=cw.caps[g], km=cw.km[g];
+      if(cap!=null && km>cap)
+        flags.push({key:"cap-"+g, lv:"risk", dim:"load", t:"Du har "+verb[g]+" mer än planerat",
+          why:"Veckans "+voln[g]+"volym ligger "+n1(km-cap)+" km över ditt tak ("+n1(km)+" mot "+n1(cap)+" km) — en snabbare ökning än de senaste veckornas trend.",
+          matter:"Snabba volymhopp ökar risken för överbelastning — kroppen anpassar sig långsammare än konditionen.",
+          act:"Korta nästa "+pass[g]+", eller byt det mot ett lugnare pass."}); }
+  }
   const lastSwim=data.activities.filter(a=>sportOf(a)==="swim").map(actDate).sort((a,b)=>b-a)[0];
   if(data.activities.length){
     const gap=lastSwim? Math.floor((t-lastSwim)/DAY) : 99;
@@ -932,7 +957,11 @@ function renderTimeline(plan){
     seg.style.flexGrow=String(Math.max(f,0.02)*1000); seg.style.flexBasis="0";
     seg.setAttribute("role","listitem"); seg.tabIndex=0;
     seg.innerHTML="<span>"+esc(p.name)+"</span>";
-    const show=()=>{ document.querySelectorAll(".tl-seg.sel").forEach(e=>e.classList.remove("sel")); seg.classList.add("sel");
+    const show=()=>{
+      const alreadyOpen = seg.classList.contains("sel") && det.classList.contains("show");
+      document.querySelectorAll(".tl-seg.sel").forEach(e=>e.classList.remove("sel"));
+      if(alreadyOpen){ det.classList.remove("show"); return; }
+      seg.classList.add("sel");
       det.innerHTML="<b>"+esc(p.name)+"</b><div class='meta'>"+dfmt(p.start)+" – "+dfmt(p.end)+" (v"+weekNo(p.start)+"–v"+weekNo(p.end)+")"+
         (p.target!=null? " · mål ~"+p.target+" % lågintensivt":"")+"</div>"+
         (p.note? "<div style='margin-top:4px'>"+esc(p.note)+"</div>":"");
@@ -1073,11 +1102,23 @@ function renderVolume(weeks, plan){
   $("#lg-volume").innerHTML=["swim","bike","run","strength"].map(k=>'<span><i style="background:'+COLORS[k]+'"></i>'+SPORT_LABEL[k]+'</span>').join("");
 }
 
+let capGren=null;
 function renderRun(weeks){
-  const el=$("#ch-run");
-  if(!weeks.some(w=>w.runKm>0)){ el.innerHTML=emptyState("Inga löppass än","När du loggat löpning visas veckovolymen mot 110 %-taket här — din viktigaste graf givet fothistoriken.","trend"); return; }
+  const el=$("#ch-run"); if(!el) return;
+  const cc=capCfg(), enabled=CAP_G.filter(g=>cc[g].on);
+  const lbl={swim:"Simning",bike:"Cykel",run:"Löpning"}, voln={swim:"Sim",bike:"Cykel",run:"Löp"};
+  const chipsEl=$("#cap-gren"), subEl=$("#sub-cap");
+  if(!enabled.length){ if(chipsEl) chipsEl.innerHTML=""; if(subEl) subEl.textContent="Inget tak aktivt — slå på per gren i inställningar.";
+    el.innerHTML=emptyState("Inga volymtak aktiva","Slå på ett tak per gren under inställningar för att följa veckovolymen mot en kontrollerad ökning.","trend"); return; }
+  if(capGren==null || !cc[capGren] || !cc[capGren].on) capGren=enabled[0];
+  if(chipsEl){ chipsEl.innerHTML = enabled.length>1 ? enabled.map(g=>'<button type="button" data-g="'+g+'"'+(capGren===g?' class="active"':'')+'>'+lbl[g]+'</button>').join("") : "";
+    chipsEl.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ capGren=b.getAttribute("data-g"); renderRun(weeks); })); }
+  const g=capGren, pct=cc[g].pct;
+  if(subEl) subEl.textContent=voln[g]+"volym km per vecka · linjen = "+pct+" % av 3-veckors rullande snitt";
+  const kmOf=(w)=>w.km[g], capOf=(w)=>w.caps[g];
+  if(!weeks.some(w=>kmOf(w)>0)){ el.innerHTML=emptyState("Inga "+lbl[g].toLowerCase()+"pass än","När du loggat "+lbl[g].toLowerCase()+" visas veckovolymen mot taket här.","trend"); return; }
   const W=460,H=200,pad={l:36,r:8,t:16,b:26}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
-  const max=Math.max(5,...weeks.map(w=>Math.max(w.runKm,w.cap||0)))*1.12;
+  const max=Math.max(5,...weeks.map(w=>Math.max(kmOf(w),capOf(w)||0)))*1.12;
   const bw=iw/weeks.length, y=(v)=>pad.t+ih-ih*v/max;
   let s=svgOpen(W,H);
   for(const gv of [Math.round(max/2), Math.round(max)]){
@@ -1085,14 +1126,14 @@ function renderRun(weeks){
     s+=txt(pad.l-6,y(gv)+3,gv+" km","#5C687C",9,"end"); }
   s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+(pad.t+ih)+'" y2="'+(pad.t+ih)+'" stroke="#243140"/>';
   const cols=[];
-  weeks.forEach((w,i)=>{ const x=pad.l+i*bw+bw*0.24, wpx=bw*0.52;
+  weeks.forEach((w,i)=>{ const km=kmOf(w), cap=capOf(w), x=pad.l+i*bw+bw*0.24, wpx=bw*0.52;
     let fill="#3D5E80";
-    if(w.cap!=null){ if(w.runKm>w.cap) fill="#E2483A"; else if(w.runKm>0.9*w.cap) fill="#E0892F"; }
-    if(w.runKm>0) s+='<rect x="'+x+'" y="'+y(w.runKm)+'" width="'+wpx+'" height="'+(pad.t+ih-y(w.runKm))+'" fill="'+fill+'" rx="2"/>';
-    if(w.cap!=null) s+='<line x1="'+(pad.l+i*bw+bw*0.1)+'" x2="'+(pad.l+i*bw+bw*0.9)+'" y1="'+y(w.cap)+'" y2="'+y(w.cap)+'" stroke="#E9EEF5" stroke-width="1.5" stroke-dasharray="3 2" opacity="0.8"/>';
+    if(cap!=null){ if(km>cap) fill="#E2483A"; else if(km>0.9*cap) fill="#E0892F"; }
+    if(km>0) s+='<rect x="'+x+'" y="'+y(km)+'" width="'+wpx+'" height="'+(pad.t+ih-y(km))+'" fill="'+fill+'" rx="2"/>';
+    if(cap!=null) s+='<line x1="'+(pad.l+i*bw+bw*0.1)+'" x2="'+(pad.l+i*bw+bw*0.9)+'" y1="'+y(cap)+'" y2="'+y(cap)+'" stroke="#E9EEF5" stroke-width="1.5" stroke-dasharray="3 2" opacity="0.8"/>';
     if(i%2===(weeks.length-1)%2) s+=txt(pad.l+i*bw+bw/2,H-8,"v"+weekNo(w.start),"#5C687C",9,"middle");
-    const status = w.cap==null? "" : w.runKm>w.cap? " · över tak" : w.runKm>0.9*w.cap? " · nära tak" : "";
-    cols.push({cx:pad.l+i*bw+bw/2, tip:'<span class="h">v'+weekNo(w.start)+status+'</span><br>'+n1(w.runKm)+' km'+(w.cap!=null? ' · tak '+n1(w.cap)+' km':'')}); });
+    const status = cap==null? "" : km>cap? " · över tak" : km>0.9*cap? " · nära tak" : "";
+    cols.push({cx:pad.l+i*bw+bw/2, tip:'<span class="h">v'+weekNo(w.start)+status+'</span><br>'+n1(km)+' km'+(cap!=null? ' · tak '+n1(cap)+' km':'')}); });
   weeks.forEach((w,i)=>{ s+='<rect class="hit" data-i="'+i+'" x="'+(pad.l+i*bw)+'" y="'+pad.t+'" width="'+bw+'" height="'+ih+'" fill="transparent"/>'; });
   s+="</svg>";
   el.innerHTML=s;
@@ -1213,6 +1254,13 @@ const EFF_BANDS_DEF={bikeLo:130,bikeHi:145,runLo:124,runHi:150};
 function effBands(){ const c=cfg||{};
   return { bikeLo:+c.effBikeLo||EFF_BANDS_DEF.bikeLo, bikeHi:+c.effBikeHi||EFF_BANDS_DEF.bikeHi,
            runLo:+c.effRunLo||EFF_BANDS_DEF.runLo, runHi:+c.effRunHi||EFF_BANDS_DEF.runHi }; }
+const CAP_G=["swim","bike","run"];
+const CAP_KEY={swim:"Swim",bike:"Bike",run:"Run"};
+const CAP_DEF={swim:{on:false,pct:110}, bike:{on:false,pct:110}, run:{on:true,pct:110}};
+function capCfg(){ const c=cfg||{}, r={};
+  for(const g of CAP_G){ const onK="cap"+CAP_KEY[g]+"On", pctK="cap"+CAP_KEY[g]+"Pct";
+    r[g]={ on:(onK in c)? !!c[onK] : CAP_DEF[g].on, pct:(+c[pctK]>0? +c[pctK] : CAP_DEF[g].pct) }; }
+  return r; }
 function isSteady(a){
   const z=zones(a); if(!z||!z.length) return true;            // ingen zondata → låt durationsfiltret avgöra
   let lo=(z[0]||0)+(z[1]||0), tot=0; for(const v of z) tot+=v||0;
@@ -1329,7 +1377,8 @@ function buildReport(){
     L.push(line); }
   L.push("Totalt: "+totN+" pass · "+fmtH(tot)+(totLoad>0? " · "+Math.round(totLoad)+" TSS":""));
   const cw=weeks[weeks.length-1];
-  if(cw&&cw.cap!=null) L.push("Löpvolym: "+n1(cw.runKm)+" km av tak "+n1(cw.cap)+" km (110 %-regeln)");
+  if(cw&&cw.caps){ const voln={swim:"Sim",bike:"Cykel",run:"Löp"}, cc=capCfg();
+    for(const g of CAP_G){ const cap=cw.caps[g]; if(cap!=null) L.push(voln[g]+"volym: "+n1(cw.km[g])+" km av tak "+n1(cap)+" km ("+cc[g].pct+" %-regeln)"); } }
   if(inten){ const ph=currentPhase(plan);
     L.push("Intensitet 14 d: "+Math.round(inten.loPct)+" % lågintensivt"+(ph&&ph.target!=null? " — fasmål ~"+ph.target+" % ("+ph.name+")":"")); }
   L.push(flags.length? "Flaggor:" : "Flaggor: inga");
@@ -1592,7 +1641,11 @@ function renderStatus(flags){
   c.querySelectorAll(".stat").forEach(btn=>btn.addEventListener("click",()=>{
     const d=btn.getAttribute("data-dim");
     const card=document.querySelector('#flags .flag[data-dim="'+d+'"]');
-    if(card){ const body=card.querySelector(".flag-body"), head=card.querySelector(".flag-head");
+    if(card){
+      document.querySelectorAll('#flags .flag.open').forEach(fl=>{ if(fl!==card){
+        const b=fl.querySelector(".flag-body"), h=fl.querySelector(".flag-head");
+        if(b) b.hidden=true; if(h) h.setAttribute("aria-expanded","false"); fl.classList.remove("open"); }});
+      const body=card.querySelector(".flag-body"), head=card.querySelector(".flag-head");
       if(body&&body.hidden&&head) head.click();
       card.scrollIntoView({behavior:"smooth", block:"center"}); }
     else { const f=$("#focus")||c; f.scrollIntoView({behavior:"smooth", block:"center"}); }
@@ -1915,16 +1968,24 @@ function fillBands(p){ const b=effBands();
 function readBands(p){ return {
   effBikeLo:+($("#"+p+"-blo").value)||EFF_BANDS_DEF.bikeLo, effBikeHi:+($("#"+p+"-bhi").value)||EFF_BANDS_DEF.bikeHi,
   effRunLo:+($("#"+p+"-rlo").value)||EFF_BANDS_DEF.runLo, effRunHi:+($("#"+p+"-rhi").value)||EFF_BANDS_DEF.runHi }; }
+function fillCaps(){ const cc=capCfg();
+  for(const g of CAP_G){ const K=CAP_KEY[g]; const on=$("#in-cap"+K+"On"), pc=$("#in-cap"+K+"Pct");
+    if(on) on.checked=cc[g].on; if(pc) pc.value=cc[g].pct; } }
+function readCaps(){ const o={};
+  for(const g of CAP_G){ const K=CAP_KEY[g]; const on=$("#in-cap"+K+"On"), pc=$("#in-cap"+K+"Pct");
+    o["cap"+K+"On"]= on? !!on.checked : CAP_DEF[g].on;
+    o["cap"+K+"Pct"]= (pc&&+pc.value>0)? +pc.value : CAP_DEF[g].pct; }
+  return o; }
 function openSettings(){ const c=cfg||{};
   $("#in-key").value=c.apiKey||""; $("#in-id").value=c.athleteId||"";
   $("#in-plan").value=c.planUrl||""; $("#in-ms").value=c.msUrl||""; $("#in-race").value=c.raceUrl||""; $("#in-edit").value=c.editUrl||""; $("#in-proxy").value=c.proxy||"";
-  fillBands("in");
+  fillBands("in"); fillCaps();
   $("#settings").classList.add("show"); }
 function closeSettings(){ $("#settings").classList.remove("show"); }
 function saveSettings(){
   cfg={ apiKey:$("#in-key").value.trim(), athleteId:$("#in-id").value.trim(),
         planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), raceUrl:$("#in-race").value.trim(), editUrl:$("#in-edit").value.trim(), proxy:$("#in-proxy").value.trim(),
-        ...readBands("in") };
+        ...readBands("in"), ...readCaps() };
   if(cfg.athleteId && !/^i/i.test(cfg.athleteId) && /^\d+$/.test(cfg.athleteId)) cfg.athleteId="i"+cfg.athleteId;
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   renderBrand();
