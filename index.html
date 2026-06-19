@@ -176,6 +176,18 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 .focus-sub{display:block; font-size:12.5px; color:var(--mut); margin-top:2px}
 .focus-main .chev{flex:0 0 auto; color:var(--faint); font-size:20px; align-self:center}
 .focus-why{margin-top:9px; padding-top:9px; border-top:1px solid var(--line); font-size:12.5px; color:var(--mut); line-height:1.45}
+#status{display:flex; gap:7px; margin-bottom:11px; flex-wrap:wrap}
+.stat{display:flex; align-items:center; gap:6px; padding:6px 11px; border-radius:999px;
+  background:var(--surface); border:1px solid var(--line); cursor:pointer; font:inherit; color:var(--mut)}
+.stat-dot{width:8px; height:8px; border-radius:50%; flex:0 0 auto}
+.stat-lbl{font-size:12px}
+.stat.alert .stat-lbl{color:var(--ink); font-weight:600}
+.stat.alert .stat-dot{box-shadow:0 0 0 3px rgba(226,72,58,.12)}
+.stat.good .stat-dot{opacity:.72}
+.stat.quiet{opacity:.8}
+.stat.quiet .stat-dot{opacity:.4}
+.flag.good{border-left-color:var(--ok)}
+.flag.good .tag{color:var(--ok)}
 
 /* ---------- Delmål ---------- */
 .msgroup{margin-bottom:14px}
@@ -464,6 +476,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
         <div class="tl-band" id="tl-band" role="list" aria-label="Periodisering"></div>
         <div class="tl-detail" id="tl-detail"></div>
       </div>
+      <div id="status"></div>
       <div id="focus"></div>
       <div id="nextkey"></div>
       <div id="flags" aria-live="polite"></div>
@@ -802,37 +815,37 @@ function computeFlags(weeks, plan, inten, ms){
   const flags=[], t=today();
   const cw=weeks[weeks.length-1];
   if(cw && cw.cap!=null && cw.runKm > cw.cap)
-    flags.push({key:"run-cap", lv:"risk", t:"Du har sprungit mer än planerat",
+    flags.push({key:"run-cap", lv:"risk", dim:"load", t:"Du har sprungit mer än planerat",
       why:"Veckans löpvolym ligger "+n1(cw.runKm-cw.cap)+" km över taket ("+n1(cw.runKm)+" mot "+n1(cw.cap)+" km) — en snabbare ökning än de senaste veckornas trend.",
       matter:"Konditionen hänger med på snabba volymhopp, men inte benstommen — det är så överbelastningsskador uppstår.",
       act:"Korta nästa löppass, eller byt det mot ett cykelpass."});
   const lastSwim=data.activities.filter(a=>sportOf(a)==="swim").map(actDate).sort((a,b)=>b-a)[0];
   if(data.activities.length){
     const gap=lastSwim? Math.floor((t-lastSwim)/DAY) : 99;
-    if(gap>7) flags.push({key:"swim-gap", lv:"risk", t:"Det var ett tag sedan du sam",
+    if(gap>7) flags.push({key:"swim-gap", lv:"risk", dim:"plan", t:"Det var ett tag sedan du sam",
       why:(lastSwim? "Det är "+gap+" dagar sedan ditt senaste simpass." : "Det finns inget simpass i datan."),
       matter:"Vattenkänslan tappas snabbast av allt vid uppehåll, och det märks direkt i öppet vatten.",
       act:"Boka in ett simpass den här veckan."}); }
   for(const m of ms){ if(m.status!=="done"&&m.plan&&m.plan<=addDays(t,7)&&!m.done){
-    flags.push({key:"milestone-risk", lv:"warn", t:"Ett delmål håller på att rinna iväg",
+    flags.push({key:"milestone-risk", lv:"warn", dim:"plan", t:"Ett delmål håller på att rinna iväg",
       why:"”"+m.desc+"” skulle vara klart "+dfmt(m.plan)+".",
       matter:"Delmål som glider utan beslut är den vanligaste orsaken till att en plan spårar ur — inte dåliga pass.",
       act:"Planera in det den här veckan, eller flytta det medvetet i Delmål-fliken."}); break; } }
   const ph=currentPhase(plan);
   if(inten && ph && ph.target!=null && Math.abs(inten.loPct-ph.target)>10){
     if(inten.loPct<ph.target)
-      flags.push({key:"intensity-high", lv:"warn", t:"Du har kört för hårt på sistone",
+      flags.push({key:"intensity-high", lv:"warn", dim:"intensity", t:"Du har kört för hårt på sistone",
         why:"Bara "+Math.round(inten.loPct)+" % lågintensivt de senaste 14 dagarna — fasen ("+ph.name+") vill ha ~"+ph.target+" %.",
         matter:"Du bygger ingen aerob form i gråzonen, bara trötthet.",
         act:"Lägg nästa par pass i Z2."});
     else
-      flags.push({key:"intensity-low", lv:"warn", t:"Det har varit lugnt ett tag",
+      flags.push({key:"intensity-low", lv:"warn", dim:"intensity", t:"Det har varit lugnt ett tag",
         why:Math.round(inten.loPct)+" % lågintensivt mot fasens ~"+ph.target+" %.",
         matter:"Inget fel i sig — men om kroppen är pigg har du utrymme för mer kvalitet.",
         act:"Lägg in ett kvalitetspass den här veckan om du känner dig redo."}); }
   const hard5=data.activities.filter(a=>{ const d=actDate(a); if(!d||d<addDays(t,-5)) return false;
     const z=zones(a); if(!z) return false; let s=0; for(let i=3;i<z.length;i++) s+=z[i]||0; return s>=1200; });
-  if(hard5.length>=3) flags.push({key:"hard-freq", lv:"warn", t:"Tre hårda pass på kort tid",
+  if(hard5.length>=3) flags.push({key:"hard-freq", lv:"warn", dim:"load", t:"Tre hårda pass på kort tid",
     why:hard5.length+" pass med minst 20 min i Z4+ de senaste 5 dagarna.",
     matter:"Tätt staplad hög intensitet tränar sönder formen istället för att bygga den.",
     act:"Lägg in en lätt dag eller vila innan nästa kvalitetspass."});
@@ -842,7 +855,7 @@ function computeFlags(weeks, plan, inten, ms){
     const base=rhr.filter(x=>x.d<addDays(t,-7)&&x.d>=addDays(t,-37));
     if(last7.length>=4&&base.length>=14){
       const m7=last7.reduce((s,x)=>s+x.v,0)/last7.length, mb=base.reduce((s,x)=>s+x.v,0)/base.length;
-      if(m7-mb>5) flags.push({key:"rhr", lv:"warn", t:"Vilopulsen är förhöjd",
+      if(m7-mb>5) flags.push({key:"rhr", lv:"warn", dim:"recovery", t:"Vilopulsen är förhöjd",
         why:"Den ligger "+n1(m7-mb)+" slag över din 30-dagarsnormal ("+Math.round(m7)+" mot "+Math.round(mb)+").",
         matter:"Förhöjd vilopuls betyder ofta att något tär — sömn, stress eller en infektion på väg.",
         act:"Sänk intensiteten tills den vänder ner igen."}); } }
@@ -962,10 +975,11 @@ function renderTimeline(plan){
 
 function renderFlags(flags, excludeKey){
   const c=$("#flags");
-  const list = excludeKey ? flags.filter(f=>f.key!==excludeKey) : flags;
+  const list = (excludeKey ? flags.filter(f=>f.key!==excludeKey) : flags.slice())
+    .sort((a,b)=>(DIM_RANK[b.lv]||0)-(DIM_RANK[a.lv]||0));
   if(!list.length){ c.innerHTML='<div class="flag ok"><div class="flag-head" style="cursor:default"><span class="fh-txt"><span class="tag">På plan</span><b style="color:var(--ok)">Allt rullar enligt plan</b></span></div></div>'; return; }
-  const tag={risk:"Åtgärd", warn:"Se över", ok:"På plan"};
-  c.innerHTML=list.map(f=>'<div class="flag '+f.lv+'">'+
+  const tag={risk:"Åtgärd", warn:"Se över", good:"Bra", ok:"På plan"};
+  c.innerHTML=list.map(f=>'<div class="flag '+f.lv+'" data-dim="'+(f.dim||"")+'">'+
     '<button type="button" class="flag-head" aria-expanded="false">'+
       '<span class="fh-txt"><span class="tag">'+tag[f.lv]+'</span><b>'+esc(f.t)+'</b></span>'+
       '<span class="chev">›</span></button>'+
@@ -1538,6 +1552,52 @@ function renderFlagLog(log){
   h.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();tg();} });
 }
 
+const DIMS=[["load","Belastning"],["intensity","Intensitet"],["recovery","Återhämtning"],["plan","Plan"]];
+const DIM_RANK={risk:3, warn:2, good:1, ok:0};
+function rollup(flags){
+  const st={}; for(const [k] of DIMS) st[k]="ok";
+  for(const f of flags){ const d=f.dim; if(!(d in st)) continue;
+    if((DIM_RANK[f.lv]||0) > DIM_RANK[st[d]]) st[d]=f.lv; }
+  let overall="ok"; for(const [k] of DIMS){ if(DIM_RANK[st[k]] > DIM_RANK[overall]) overall=st[k]; }
+  return {dims:st, overall};
+}
+function computeGoodFlags(weeks, plan, inten, problem){
+  const good=[], flagged=new Set(problem.map(f=>f.dim));
+  const ph=currentPhase(plan);
+  if(!flagged.has("intensity") && inten && ph && ph.target!=null && Math.abs(inten.loPct-ph.target)<=10)
+    good.push({key:"intensity-ok", lv:"good", dim:"intensity", t:"Intensiteten ligger i fas",
+      why:Math.round(inten.loPct)+" % lågintensivt mot fasens ~"+ph.target+" % — du håller polariseringen.",
+      matter:"Rätt fördelning lågt/hårt bygger aerob form utan att gräva ett trötthetshål.",
+      act:"Fortsätt som du gör."});
+  if(!flagged.has("plan")){
+    let streak=0, i=weeks.length-1;
+    if(i>=0 && Object.values(weeks[i].vol).reduce((a,b)=>a+b,0)<=0.017) i--; // hoppa över tom pågående vecka
+    for(; i>=0; i--){ if(Object.values(weeks[i].vol).reduce((a,b)=>a+b,0)>0.017) streak++; else break; }
+    if(streak>=4) good.push({key:"streak", lv:"good", dim:"plan", t:"Du har tränat "+streak+" veckor i rad",
+      why:"Ingen vecka utan träning de senaste "+streak+" veckorna.",
+      matter:"Kontinuitet slår enskilda perfekta pass — den starkaste prediktorn för långsiktig utveckling.",
+      act:"Håll i det."});
+  }
+  return good;
+}
+function renderStatus(flags){
+  const c=$("#status"); if(!c) return;
+  const r=rollup(flags), col={risk:"var(--risk)", warn:"var(--warn)", good:"var(--ok)", ok:"var(--ok)"};
+  c.innerHTML=DIMS.map(([k,label])=>{
+    const s=r.dims[k], cls = s==="risk"||s==="warn" ? "alert" : s==="good" ? "good" : "quiet";
+    return '<button type="button" class="stat '+cls+'" data-dim="'+k+'" aria-label="'+label+': '+
+      (s==="risk"?"åtgärd":s==="warn"?"se över":"på spår")+'">'+
+      '<span class="stat-dot" style="background:'+col[s]+'"></span><span class="stat-lbl">'+label+'</span></button>';
+  }).join("");
+  c.querySelectorAll(".stat").forEach(btn=>btn.addEventListener("click",()=>{
+    const d=btn.getAttribute("data-dim");
+    const card=document.querySelector('#flags .flag[data-dim="'+d+'"]');
+    if(card){ const body=card.querySelector(".flag-body"), head=card.querySelector(".flag-head");
+      if(body&&body.hidden&&head) head.click();
+      card.scrollIntoView({behavior:"smooth", block:"center"}); }
+    else { const f=$("#focus")||c; f.scrollIntoView({behavior:"smooth", block:"center"}); }
+  }));
+}
 function pickFocus(plan, flags, ms){
   const t=today();
   const urgent=(ms||[]).filter(m=>m.status!=="done"&&!m.done&&m.plan&&m.plan<=addDays(t,10)).sort((a,b)=>a.plan-b.plan)[0];
@@ -1775,10 +1835,12 @@ function renderAll(ts){
   $("#tl-band").parentElement.querySelectorAll(".tl-today").forEach(e=>e.remove());
   renderTimeline(plan);
   const flags=computeFlags(weeks, plan, inten, ms);
+  const allFlags=flags.concat(computeGoodFlags(weeks, plan, inten, flags));
   const focus=pickFocus(plan, flags, ms);
+  renderStatus(allFlags);
   renderFocus(focus, plan);
   renderNextKey(focus);
-  renderFlags(flags, focus.excludeKey);
+  renderFlags(allFlags, focus.excludeKey);
   renderFlagLog(processFlagLog(flags));
   renderRace(plan);
   renderReadiness(plan, ms);
