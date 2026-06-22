@@ -13,7 +13,7 @@
 <title>Triathlonöversikt</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=Michroma&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0C1320; --surface:#131C2C; --surface-hi:#1A2436; --surface-lo:#0F1726;
@@ -28,6 +28,7 @@
   /* 8-punktsraster */
   --s1:4px; --s2:8px; --s3:16px; --s4:24px; --s5:32px;
   --disp:"Barlow Condensed", "Arial Narrow", sans-serif;
+  --hero:"Michroma", "Barlow Condensed", sans-serif;
   --body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --r:17px;
 }
@@ -54,7 +55,7 @@ header.hero{max-width:1060px; margin:0 auto; padding:14px 16px; display:flex; al
 .eyebrow{font-family:var(--disp); font-weight:600; letter-spacing:.18em; text-transform:uppercase; font-size:13px; color:var(--mut)}
 .hero h1{font-family:var(--disp); font-weight:600; font-size:23px; line-height:1.1; letter-spacing:.01em; color:var(--ink); margin-top:1px}
 .countdown{display:flex; align-items:baseline; gap:9px; margin-top:6px}
-.countdown .n{font-family:var(--disp); font-weight:700; font-size:72px; line-height:.9; letter-spacing:-.01em;
+.countdown .n{font-family:var(--hero); font-weight:400; font-size:62px; line-height:.9; letter-spacing:0;
   font-variant-numeric:tabular-nums}
 .countdown .u{color:var(--mut); font-size:14px}
 .racedate{color:var(--faint); font-size:13px; margin-top:4px; font-variant-numeric:tabular-nums}
@@ -635,6 +636,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
       <button class="btn primary" id="btn-save">Spara & hämta data</button>
       <button class="btn" id="btn-close">Stäng</button>
     </div>
+    <div id="buildstamp" style="text-align:center;color:var(--faint);font-size:11px;letter-spacing:.04em;margin-top:2px"></div>
     <div class="help">
       <h3>1 · intervals.icu</h3>
       <ol>
@@ -670,6 +672,7 @@ const DAY=86400000;
 const FALLBACK_RACE={name:"Din tävling", date:"2099-01-01", placeholder:true};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
+const BUILD="v5 · 2026-06-22";
 let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
 
 /* ============ Hjälpare ============ */
@@ -847,7 +850,7 @@ function computeFlags(weeks, plan, inten, ms){
   const lastSwim=data.activities.filter(a=>sportOf(a)==="swim").map(actDate).sort((a,b)=>b-a)[0];
   if(data.activities.length){
     const gap=lastSwim? Math.floor((t-lastSwim)/DAY) : 99;
-    if(gap>7) flags.push({key:"swim-gap", lv:"risk", dim:"plan", t:"Det var ett tag sedan du sam",
+    if(gap>7) flags.push({key:"swim-gap", lv:"risk", dim:"plan", t:"Det var ett tag sedan du simmade",
       why:(lastSwim? "Det är "+gap+" dagar sedan ditt senaste simpass." : "Det finns inget simpass i datan."),
       matter:"Vattenkänslan tappas snabbast av allt vid uppehåll, och det märks direkt i öppet vatten.",
       act:"Boka in ett simpass den här veckan."}); }
@@ -1203,9 +1206,18 @@ function scatter(el, pts, opts){
   if(pts.length<2){ el.classList.remove("chart"); el.innerHTML=emptyState(opts.emptyTitle||"Ingen trend än", opts.empty||"För få datapunkter ännu.", opts.emptyIcon||"trend"); return; }
   const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
   const x0=Math.min(...xs), x1=Math.max(...xs)||x0+1;
-  let y0=Math.min(...ys), y1=Math.max(...ys); const padY=(y1-y0)*0.15||1; y0-=padY; y1+=padY;
+  // Robust y-domän: en enstaka outlier (t.ex. ett teknik-/intervallpass som slinker genom ≥600 m-filtret)
+  // ska inte kapa ihop hela skalan. Median ± 2,6·IQR, klippt till faktiskt min/max → degraderar till
+  // ren min/max när inga outliers finns. Punkter utanför domänen ritas kvar men klamras till kanten (inget döljs).
+  let y0=Math.min(...ys), y1=Math.max(...ys);
+  if(ys.length>=6){ const sy=ys.slice().sort((a,b)=>a-b);
+    const q=(p)=>{ const ix=(sy.length-1)*p, lo=Math.floor(ix); return sy[lo]+(sy[Math.ceil(ix)]-sy[lo])*(ix-lo); };
+    const med=q(0.5), iqr=(q(0.75)-q(0.25))||(y1-y0)||1;
+    y0=Math.max(y0, med-2.6*iqr); y1=Math.min(y1, med+2.6*iqr); }
+  const padY=(y1-y0)*0.15||1; y0-=padY; y1+=padY;
   const X=(v)=>pad.l+iw*(v-x0)/Math.max(1,(x1-x0));
-  const Y=(v)=>opts.invert? pad.t+ih*(v-y0)/(y1-y0) : pad.t+ih-ih*(v-y0)/(y1-y0);
+  const clampY=(v)=>Math.max(pad.t, Math.min(pad.t+ih, v));
+  const Y=(v)=>clampY(opts.invert? pad.t+ih*(v-y0)/(y1-y0) : pad.t+ih-ih*(v-y0)/(y1-y0));
   let s=svgOpen(W,H);
   for(const f of [0.25,0.75]){ const v=y0+(y1-y0)*f;
     s+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="#19232F"/>';
@@ -1217,8 +1229,10 @@ function scatter(el, pts, opts){
     s+= p.hollow? '<circle class="pt" data-i="'+i+'" cx="'+cx+'" cy="'+cy+'" r="3.6" fill="none" stroke="'+opts.color+'" stroke-width="1.6"/>'
                 : '<circle class="pt" data-i="'+i+'" cx="'+cx+'" cy="'+cy+'" r="3.8" fill="'+opts.color+'"/>'; });
   pts.forEach((p,i)=>{ s+='<circle class="hit" data-i="'+i+'" cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="12" fill="transparent"/>'; });
-  s+=txt(pad.l,H-6,dfmt(new Date(x0)),"#5C687C",9);
-  s+=txt(W-pad.r,H-6,dfmt(new Date(x1)),"#5C687C",9,"end");
+  const xyr = new Date(x0).getFullYear()!==new Date(x1).getFullYear();
+  const dax=(v)=>new Date(v).toLocaleDateString("sv-SE", xyr? {day:"numeric",month:"short",year:"numeric"} : {day:"numeric",month:"short"});
+  s+=txt(pad.l,H-6,dax(x0),"#5C687C",9);
+  s+=txt(W-pad.r,H-6,dax(x1),"#5C687C",9,"end");
   s+="</svg>";
   el.classList.add("chart");
   el.innerHTML=s;
@@ -1321,19 +1335,20 @@ function fmtH(h){ const H=Math.floor(h), M=Math.round((h-H)*60);
 
 function weekSummary(){
   const t=today(), w0=monday(t), w1=addDays(w0,7), p0=addDays(w0,-7);
-  const cur={}, prev={}, days=Array.from({length:7},()=>[]);
+  const ti=Math.round((t-w0)/DAY);                       // dagens index 0..6 (mån=0)
+  const cur={}, prev={}, prevToDate={}, days=Array.from({length:7},()=>[]);
   const add=(o,s,a)=>{ o[s]=o[s]||{t:0,km:0,n:0,load:0}; o[s].t+=(a.moving_time||0)/3600; o[s].km+=(a.distance||0)/1000; o[s].n++; o[s].load+=(a.icu_training_load||0); };
   for(const a of data.activities){ const d=actDate(a); if(!d) continue;
     const s=sportOf(a);
     if(d>=w0&&d<w1){ add(cur,s,a); const i=Math.round((d-w0)/DAY);
       if(i>=0&&i<7){ const st=new Date(a.start_date_local||a.start_date||d);
         days[i].push({s, st:+st, en:+st+(a.moving_time||0)*1000}); } }
-    else if(d>=p0&&d<w0){ add(prev,s,a); } }
-  return {w0,cur,prev,days}; }
+    else if(d>=p0&&d<w0){ add(prev,s,a); if(Math.round((d-p0)/DAY)<=ti) add(prevToDate,s,a); } }
+  return {w0,cur,prev,prevToDate,days}; }
 
 function renderWeek(ws){
   const t=today(), ti=Math.round((t-ws.w0)/DAY);
-  $("#vecka-sub").textContent="v"+weekNo(ws.w0)+" · jämfört med förra veckan";
+  $("#vecka-sub").textContent="v"+weekNo(ws.w0)+" · samma tid förra veckan";
   const L=["M","T","O","T","F","L","S"];
   $("#weekstrip").innerHTML=L.map((l,i)=>{
     const cls="wd"+(i===ti?" today":"")+(i>ti?" future":"");
@@ -1347,7 +1362,7 @@ function renderWeek(ws){
     return '<div class="'+cls+'"><span class="lbl">'+l+'</span><span class="cell">'+(dots||'<span class="none"></span>')+'</span></div>'; }).join("");
   const order=["swim","bike","run","strength","other"];
   let rows="", tot=0, ptot=0, totN=0, totLoad=0, pLoad=0, first=true;
-  for(const s of order){ const c=ws.cur[s], p=ws.prev[s]; if(!c&&!p) continue;
+  for(const s of order){ const c=ws.cur[s], p=ws.prevToDate[s]; if(!c&&!p) continue;
     const ct=c?c.t:0, pt=p?p.t:0; tot+=ct; ptot+=pt; totN+=c?c.n:0; totLoad+=c?c.load:0; pLoad+=p?p.load:0;
     let val=c? fmtH(ct) : "–";
     if(c&&s==="swim"&&c.km>0) val+=" · "+Math.round(c.km*1000)+" m";
@@ -1356,7 +1371,7 @@ function renderWeek(ws){
     rows+='<div class="wkrow'+(first?" first":"")+(ct<=0?" idle":"")+'"><span class="nm"><i style="background:'+(COLORS[s]||COLORS.other)+'"></i>'+SPORT_LABEL[s]+
       (c&&c.n?' <span style="color:var(--faint)">×'+c.n+'</span>':'')+'</span><span class="val">'+val+'<span class="delta">'+dTxt+'</span></span></div>';
     first=false; }
-  if(!rows) rows=emptyState("Inga pass den här veckan än","Första passet dyker upp så fort klockan synkat mot intervals.icu.","bars");
+  if(totN===0) rows=emptyState("Inga pass än den här veckan","Första passet dyker upp så fort klockan synkat mot intervals.icu.","bars");
   else { const d=tot-ptot, dTxt=Math.abs(d)<0.017? "±0" : (d>0?"▲ ":"▼ ")+fmtH(Math.abs(d));
     const loadTxt = totLoad>0 ? '<span class="wkload">'+Math.round(totLoad)+' TSS</span>' : '';
     rows+='<div class="wkrow total"><span class="nm">Totalt <span style="color:var(--faint)">×'+totN+'</span></span><span class="val">'+loadTxt+fmtH(tot)+'<span class="delta">'+dTxt+'</span></span></div>'; }
@@ -1939,12 +1954,13 @@ function emblemSVG(){
 const WM_GAP=0; // finjustering av N→E-glappet (px i viewBox-skala), nudgas vid behov
 function wordmarkSVG(h, col){
   col=col||"#E9EEF5";
-  return '<svg class="wm" viewBox="0.0 19.530000686645508 394.67 39.060001373291016" height="'+h+'" preserveAspectRatio="xMinYMid meet" role="img" aria-label="TRIZONE"><path d="M18.75 57.81L18.75 24.22L0.00 24.22L0.00 20.31L42.19 20.31L42.19 24.22L23.44 24.22L23.44 57.81L18.75 57.81ZM63.27 20.31L88.37 20.31Q93.86 20.31 97.22 20.80Q100.57 21.29 102.31 22.49Q104.04 23.68 104.65 25.76Q105.26 27.83 105.26 31.01L105.26 31.98Q105.26 34.91 104.56 37.02Q103.87 39.14 101.89 40.44Q99.91 41.75 96.03 42.29L104.19 57.81L99.50 57.81L91.51 42.63Q91.03 42.65 90.50 42.65Q89.98 42.65 89.42 42.65L67.96 42.65L67.96 57.81L63.27 57.81L63.27 20.31M67.96 38.60L88.68 38.60Q92.86 38.60 95.26 38.32Q97.67 38.04 98.80 37.33Q99.94 36.62 100.25 35.33Q100.57 34.03 100.57 31.98L100.57 31.01Q100.57 28.69 100.13 27.34Q99.69 26.00 98.38 25.37Q97.06 24.73 94.44 24.55Q91.83 24.37 87.46 24.37L67.96 24.37L67.96 38.60ZM128.12 57.81L128.12 20.31L132.81 20.31L132.81 57.81L128.12 57.81ZM154.62 57.81L154.62 53.91L190.90 24.22L156.18 24.22L156.18 20.31L197.59 20.31L197.59 24.22L161.12 53.91L198.37 53.91L198.37 57.81L154.62 57.81ZM236.71 58.59Q231.22 58.59 227.68 57.85Q224.14 57.10 222.15 55.10Q220.16 53.10 219.37 49.34Q218.57 45.58 218.57 39.55L218.57 38.57Q218.57 33.59 219.06 30.21Q219.55 26.83 220.75 24.71Q221.94 22.58 224.01 21.46Q226.07 20.34 229.19 19.93Q232.32 19.53 236.71 19.53L246.55 19.53Q250.95 19.53 254.07 19.93Q257.20 20.34 259.26 21.46Q261.32 22.58 262.52 24.71Q263.71 26.83 264.20 30.21Q264.69 33.59 264.69 38.57L264.69 39.55Q264.69 45.58 263.90 49.34Q263.10 53.10 261.11 55.10Q259.13 57.10 255.58 57.85Q252.04 58.59 246.55 58.59L236.71 58.59M236.71 54.54L246.55 54.54Q250.04 54.54 252.44 54.30Q254.83 54.05 256.33 53.25Q257.83 52.44 258.62 50.81Q259.42 49.17 259.71 46.44Q260.00 43.70 260.00 39.55L260.00 38.57Q260.00 34.28 259.71 31.49Q259.42 28.71 258.62 27.10Q257.83 25.49 256.33 24.74Q254.83 24.00 252.44 23.79Q250.04 23.58 246.55 23.58L236.71 23.58Q233.22 23.58 230.83 23.79Q228.44 24.00 226.94 24.74Q225.43 25.49 224.64 27.10Q223.85 28.71 223.55 31.49Q223.26 34.28 223.26 38.57L223.26 39.55Q223.26 43.70 223.55 46.44Q223.85 49.17 224.64 50.81Q225.43 52.44 226.94 53.25Q228.44 54.05 230.83 54.30Q233.22 54.54 236.71 54.54ZM286.50 57.81L286.50 20.31L291.39 20.31L329.06 52.03L329.11 52.03L329.11 20.31L333.79 20.31L333.79 57.81L328.91 57.81L291.24 25.83L291.19 25.83L291.19 57.81L286.50 57.81ZM357.17 57.81L357.17 20.31L393.99 20.31L393.99 24.22L361.86 24.22L361.86 36.72L392.64 36.72L392.64 40.63L361.86 40.63L361.86 53.91L394.67 53.91L394.67 57.81L357.17 57.81Z" fill="'+col+'"/></svg>';
+  return '<svg class="wm" viewBox="0 19.530000686645508 310.67 39.060001373291016" height="'+h+'" preserveAspectRatio="xMinYMid meet" role="img" aria-label="TRIZONE"><path d="M18.75 57.81L18.75 24.22L0 24.22L0 20.31L42.19 20.31L42.19 24.22L23.44 24.22L23.44 57.81L18.75 57.81ZM49.27 20.31L74.37 20.31Q79.86 20.31 83.22 20.80Q86.57 21.29 88.31 22.49Q90.04 23.68 90.65 25.76Q91.26 27.83 91.26 31.01L91.26 31.98Q91.26 34.91 90.56 37.02Q89.87 39.14 87.89 40.44Q85.91 41.75 82.03 42.29L90.19 57.81L85.50 57.81L77.51 42.63Q77.03 42.65 76.50 42.65Q75.98 42.65 75.42 42.65L53.96 42.65L53.96 57.81L49.27 57.81L49.27 20.31M53.96 38.60L74.68 38.60Q78.86 38.60 81.26 38.32Q83.67 38.04 84.80 37.33Q85.94 36.62 86.25 35.33Q86.57 34.03 86.57 31.98L86.57 31.01Q86.57 28.69 86.13 27.34Q85.69 26.00 84.38 25.37Q83.06 24.73 80.44 24.55Q77.83 24.37 73.46 24.37L53.96 24.37L53.96 38.60ZM100.12 57.81L100.12 20.31L104.81 20.31L104.81 57.81L100.12 57.81ZM112.62 57.81L112.62 53.91L148.90 24.22L114.18 24.22L114.18 20.31L155.59 20.31L155.59 24.22L119.12 53.91L156.37 53.91L156.37 57.81L112.62 57.81ZM180.71 58.59Q175.22 58.59 171.68 57.85Q168.14 57.10 166.15 55.10Q164.16 53.10 163.37 49.34Q162.57 45.58 162.57 39.55L162.57 38.57Q162.57 33.59 163.06 30.21Q163.55 26.83 164.75 24.71Q165.94 22.58 168.01 21.46Q170.07 20.34 173.19 19.93Q176.32 19.53 180.71 19.53L190.55 19.53Q194.95 19.53 198.07 19.93Q201.20 20.34 203.26 21.46Q205.32 22.58 206.52 24.71Q207.71 26.83 208.20 30.21Q208.69 33.59 208.69 38.57L208.69 39.55Q208.69 45.58 207.90 49.34Q207.10 53.10 205.11 55.10Q203.13 57.10 199.58 57.85Q196.04 58.59 190.55 58.59L180.71 58.59M180.71 54.54L190.55 54.54Q194.04 54.54 196.44 54.30Q198.83 54.05 200.33 53.25Q201.83 52.44 202.62 50.81Q203.42 49.17 203.71 46.44Q204.00 43.70 204.00 39.55L204.00 38.57Q204.00 34.28 203.71 31.49Q203.42 28.71 202.62 27.10Q201.83 25.49 200.33 24.74Q198.83 24.00 196.44 23.79Q194.04 23.58 190.55 23.58L180.71 23.58Q177.22 23.58 174.83 23.79Q172.44 24.00 170.94 24.74Q169.43 25.49 168.64 27.10Q167.85 28.71 167.55 31.49Q167.26 34.28 167.26 38.57L167.26 39.55Q167.26 43.70 167.55 46.44Q167.85 49.17 168.64 50.81Q169.43 52.44 170.94 53.25Q172.44 54.05 174.83 54.30Q177.22 54.54 180.71 54.54ZM216.50 57.81L216.50 20.31L221.39 20.31L259.06 52.03L259.11 52.03L259.11 20.31L263.79 20.31L263.79 57.81L258.91 57.81L221.24 25.83L221.19 25.83L221.19 57.81L216.50 57.81ZM273.17 57.81L273.17 20.31L309.99 20.31L309.99 24.22L277.86 24.22L277.86 36.72L308.64 36.72L308.64 40.63L277.86 40.63L277.86 53.91L310.67 53.91L310.67 57.81L273.17 57.81Z" fill="'+col+'"/></svg>';
 }
 function adjustWordmarks(){} // wordmark är nu en fryst kontur (path) — inget att mäta
 function renderBrand(){
   const br=$("#brandrow");
   if(br) br.innerHTML='<span class="bemblem">'+emblemSVG()+'</span>'+wordmarkSVG(15,"#A9B6C7");
+  const bs=$("#buildstamp"); if(bs) bs.textContent="TRIZONE "+BUILD;
   const sp=$("#splash");
   if(sp&&!sp.dataset.built){ sp.dataset.built="1";
     sp.innerHTML='<div style="display:flex;align-items:center;gap:14px">'+
