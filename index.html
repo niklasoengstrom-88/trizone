@@ -51,7 +51,9 @@ header.hero{max-width:1060px; margin:0 auto; padding:14px 16px; display:flex; al
 .brandrow .bemblem{display:block; width:40px; height:40px}
 .brandrow .bemblem svg{width:100%; height:100%; display:block}
 .brandrow svg.wm{display:block}
-.nubrand{margin-bottom:var(--s4)}
+.eyebrow-row{display:flex; align-items:center; gap:10px; margin-bottom:2px}
+.nu-emblem{width:24px; height:24px; flex:0 0 auto; display:block}
+.nu-emblem svg{width:100%; height:100%; display:block}
 .herohead{margin-bottom:var(--s4)}
 .eyebrow{font-family:var(--disp); font-weight:600; letter-spacing:.18em; text-transform:uppercase; font-size:13px; color:var(--mut)}
 .hero h1{font-family:var(--disp); font-weight:600; font-size:23px; line-height:1.1; letter-spacing:.01em; color:var(--ink); margin-top:1px}
@@ -357,6 +359,15 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 .help code{background:var(--surface-lo); border:1px solid var(--line); border-radius:6px; padding:1px 6px;
   font-size:12px; color:#A8C7E0}
 .help ol{padding-left:18px} .help li{margin:4px 0}
+.pg{border:1px solid var(--line); border-radius:12px; margin:0 0 10px; background:var(--surface-lo)}
+.pg>summary{list-style:none; cursor:pointer; padding:13px 15px; display:flex; align-items:center; justify-content:space-between;
+  font-family:var(--disp); font-weight:600; font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink)}
+.pg>summary::-webkit-details-marker{display:none}
+.pg>summary::after{content:"⌄"; color:var(--faint); font-size:16px; line-height:1; transition:transform .2s}
+.pg[open]>summary::after{transform:rotate(180deg)}
+.pg>summary:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:10px}
+.pg-body{padding:0 15px 14px}
+.pg-body .help{margin-top:0; padding-top:0; border-top:0}
 #onboard{margin-top:18px}
 .zgrid{display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; margin:4px 0 6px}
 .zgrid .zf{display:flex; flex-direction:column; gap:3px}
@@ -477,9 +488,11 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 
   <!-- ===== NU ===== -->
   <div class="tabpanel" id="tab-nu" data-tab="nu">
-    <div class="brandrow nubrand" id="brandrow"></div>
     <div class="herohead">
-      <div class="eyebrow" id="eyebrow">Träningsöversikt</div>
+      <div class="eyebrow-row">
+        <span class="nu-emblem" id="brandrow"></span>
+        <div class="eyebrow" id="eyebrow">Träningsöversikt</div>
+      </div>
       <h1 id="racename">TRIZONE</h1>
       <div class="countdown"><span class="n" id="cd-n">–</span><span class="u" id="cd-u">dagar kvar</span></div>
       <div class="racedate" id="cd-date"></div>
@@ -609,6 +622,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 <div class="tabpanel" id="tab-profil" data-tab="profil" hidden>
   <div class="panel">
     <h2>Inställningar</h2>
+    <details class="pg" open><summary>Anslutning</summary><div class="pg-body">
     <label for="in-key">intervals.icu API-nyckel</label>
     <input id="in-key" type="password" autocomplete="off" placeholder="t.ex. 1a2b3c…">
     <label for="in-id">intervals.icu Athlete ID</label>
@@ -622,27 +636,23 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     <label for="in-edit">Google Sheet — redigeringslänk (valfri, för genväg)</label>
     <input id="in-edit" type="url" placeholder="https://docs.google.com/spreadsheets/d/…/edit">
     <label for="in-proxy">Proxy-prefix (lämna tomt — används bara om direktanrop blockeras)</label>
-    <input id="in-proxy" type="url" placeholder="https://din-worker.workers.dev/?url=">
-    <label>Pulsfönster för effektivitetsgraferna</label>
+    <input id="in-proxy" type="url" placeholder="https://din-worker.workers.dev/?url="></div></details>
+    <details class="pg"><summary>Pulsfönster</summary><div class="pg-body">
     <p class="zhint">Det aeroba pulsintervall (ungefär din Z2) som watt-vid-puls och tempo-vid-puls jämför inom — håller pulsen konstant så trenden blir läsbar. Dina egentliga zoner Z1–Z5 sätter du i intervals.icu; appen läser dem därifrån.</p>
     <div class="zgrid">
       <div class="zf"><span>Cykel — lägsta puls</span><input id="in-blo" type="number" inputmode="numeric" placeholder="130"></div>
       <div class="zf"><span>Cykel — högsta puls</span><input id="in-bhi" type="number" inputmode="numeric" placeholder="145"></div>
       <div class="zf"><span>Löpning — lägsta puls</span><input id="in-rlo" type="number" inputmode="numeric" placeholder="124"></div>
       <div class="zf"><span>Löpning — högsta puls</span><input id="in-rhi" type="number" inputmode="numeric" placeholder="150"></div>
-    </div>
-    <label>Volymökningstak per gren</label>
+    </div></div></details>
+    <details class="pg"><summary>Volymtak</summary><div class="pg-body">
     <p class="zhint">Ett räcke du själv sätter: appen varnar när en grens veckovolym ökar snabbare än vald procent av de tre föregående veckornas snitt. Slå på för de grenar där du vill hålla igen på snabba hopp (t.ex. löpning vid skadekänslighet). Det är inget medicinskt råd — bara en gräns du valt.</p>
     <div class="capgrid">
       <div class="capf"><label class="capon"><input id="in-capSwimOn" type="checkbox"><span>Simning</span></label><span class="cappct"><input id="in-capSwimPct" type="number" inputmode="numeric" placeholder="110">%</span></div>
       <div class="capf"><label class="capon"><input id="in-capBikeOn" type="checkbox"><span>Cykel</span></label><span class="cappct"><input id="in-capBikePct" type="number" inputmode="numeric" placeholder="110">%</span></div>
       <div class="capf"><label class="capon"><input id="in-capRunOn" type="checkbox"><span>Löpning</span></label><span class="cappct"><input id="in-capRunPct" type="number" inputmode="numeric" placeholder="110">%</span></div>
-    </div>
-    <div class="row">
-      <button class="btn primary" id="btn-save">Spara & hämta data</button>
-      <button class="btn" id="btn-close">Klar</button>
-    </div>
-    <div id="buildstamp" style="text-align:center;color:var(--faint);font-size:11px;letter-spacing:.04em;margin-top:2px"></div>
+    </div></div></details>
+    <details class="pg"><summary>Hjälp &amp; setup</summary><div class="pg-body">
     <div class="help">
       <h3>1 · intervals.icu</h3>
       <ol>
@@ -667,6 +677,12 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
         <li>Upprepa för fliken Delmal.</li>
       </ol>
     </div>
+    </div></details>
+    <div class="row">
+      <button class="btn primary" id="btn-save">Spara &amp; hämta data</button>
+      <button class="btn" id="btn-close">Klar</button>
+    </div>
+    <div id="buildstamp" style="text-align:center;color:var(--faint);font-size:11px;letter-spacing:.04em;margin-top:2px"></div>
   </div>
 </div>
 
@@ -678,7 +694,7 @@ const DAY=86400000;
 const FALLBACK_RACE={name:"Din tävling", date:"2099-01-01", placeholder:true};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
-const BUILD="v6 · 2026-06-22";
+const BUILD="v7 · 2026-06-22";
 let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
 
 /* ============ Hjälpare ============ */
@@ -1968,7 +1984,7 @@ function wordmarkSVG(h, col){
 function adjustWordmarks(){} // wordmark är nu en fryst kontur (path) — inget att mäta
 function renderBrand(){
   const br=$("#brandrow");
-  if(br) br.innerHTML='<span class="bemblem">'+emblemSVG()+'</span>'+wordmarkSVG(15,"#A9B6C7");
+  if(br) br.innerHTML=emblemSVG();
   const bs=$("#buildstamp"); if(bs) bs.textContent="TRIZONE "+BUILD;
   const sp=$("#splash");
   if(sp&&!sp.dataset.built){ sp.dataset.built="1";
