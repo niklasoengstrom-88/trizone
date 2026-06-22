@@ -414,6 +414,15 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 .lastupd-line .lu-ic{font-size:14px; line-height:1; display:inline-block}
 .lastupd-line .lu-ic.spin{animation:spin .8s linear infinite}
 @media (prefers-reduced-motion: reduce){ .lastupd-line .lu-ic.spin{animation:none} }
+#ptr{position:fixed; left:50%; top:0; z-index:45; width:34px; height:34px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:18px; line-height:1;
+  background:var(--surface-hi); border:1px solid var(--line); box-shadow:0 4px 14px rgba(0,0,0,.4);
+  color:var(--mut); opacity:0; pointer-events:none; transform:translate(-50%,-44px)}
+#ptr.armed{color:var(--accent); border-color:#2C3D58}
+#ptr.refreshing{transition:transform .2s ease, opacity .2s ease}
+#ptr .ptr-ic{display:inline-block}
+#ptr.spin .ptr-ic{animation:spin .8s linear infinite}
+@media (prefers-reduced-motion: reduce){ #ptr.spin .ptr-ic{animation:none} }
 
 /* ---------- Segmentkontroll ---------- */
 .segctrl{display:flex; gap:4px; padding:4px; background:var(--surface-lo); border:1px solid var(--line);
@@ -482,6 +491,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 
 <div id="splash" aria-hidden="true"></div>
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="ptr" aria-hidden="true"><span class="ptr-ic">↻</span></div>
 
 <main>
   <div id="banner" role="alert"></div>
@@ -694,7 +704,7 @@ const DAY=86400000;
 const FALLBACK_RACE={name:"Din tävling", date:"2099-01-01", placeholder:true};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
-const BUILD="v7 · 2026-06-22";
+const BUILD="v8 · 2026-06-22";
 let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
 
 /* ============ Hjälpare ============ */
@@ -2053,6 +2063,43 @@ function showOnboarding(){
     try{ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }catch(e){}
     toast("Pulszoner sparade ✓"); }); }
 
+function initPullToRefresh(){
+  // Bara i installerat PWA-läge — i webbläsarflik finns native pull-to-refresh + tappbar rad.
+  const standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true;
+  if(!standalone) return;
+  const ind=$("#ptr"); if(!ind) return;
+  const TH=72, MAX=120;
+  let startY=0, pulling=false, dist=0;
+  const park=()=>{ ind.style.transform="translate(-50%,-44px)"; ind.style.opacity="0"; ind.classList.remove("armed"); };
+  window.addEventListener("touchstart",(e)=>{
+    if(window.scrollY>0 || e.touches.length!==1){ pulling=false; return; }
+    startY=e.touches[0].clientY; pulling=true; dist=0; ind.classList.remove("refreshing");
+  }, {passive:true});
+  window.addEventListener("touchmove",(e)=>{
+    if(!pulling) return;
+    if(window.scrollY>0){ pulling=false; park(); return; }
+    dist=e.touches[0].clientY-startY;
+    if(dist<=0){ park(); return; }
+    e.preventDefault();                              // vi äger gesten — stoppa rubber-band
+    const d=Math.min(dist,MAX), y=-44+Math.min(d*0.6,60);
+    ind.style.opacity=String(Math.min(1,d/TH));
+    ind.style.transform="translate(-50%,"+y+"px)";
+    ind.classList.toggle("armed", dist>=TH);
+  }, {passive:false});
+  const end=()=>{
+    if(!pulling) return;
+    const fire=dist>=TH; pulling=false;
+    ind.classList.add("refreshing");
+    if(fire){
+      ind.classList.remove("armed"); ind.classList.add("spin");
+      ind.style.opacity="1"; ind.style.transform="translate(-50%,14px)";
+      Promise.resolve(refreshAll()).finally(()=>{ ind.classList.remove("spin"); park(); setTimeout(()=>ind.classList.remove("refreshing"),220); });
+    } else { park(); setTimeout(()=>ind.classList.remove("refreshing"),220); }
+  };
+  window.addEventListener("touchend", end, {passive:true});
+  window.addEventListener("touchcancel", end, {passive:true});
+}
+
 function boot(){
   renderBrand();
   buildTabbar();
@@ -2067,6 +2114,7 @@ function boot(){
   $("#btn-save").addEventListener("click",saveSettings);
   $("#lastupd").addEventListener("click",refreshAll);
   $("#btn-report").addEventListener("click",copyReport);
+  initPullToRefresh();
   document.addEventListener("keydown",e=>{ if(e.key==="Escape" && activeTab==="profil") closeSettings(); });
   const mq=matchMedia("(orientation: landscape)");
   const onOri=()=>{ if(_plan) renderTimeline(_plan); };
