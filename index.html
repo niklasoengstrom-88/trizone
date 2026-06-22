@@ -41,7 +41,7 @@ body{background:var(--bg); color:var(--ink); font-family:var(--body); font-size:
 svg text{font-variant-numeric:tabular-nums}
 a{color:var(--accent)}
 button{font-family:var(--body); cursor:pointer}
-main{max-width:1060px; margin:0 auto; padding:0 16px}
+main{max-width:1060px; margin:0 auto; padding:calc(14px + env(safe-area-inset-top)) 16px 0}
 ::selection{background:#2A3B57}
 
 /* ---------- Header / hero ---------- */
@@ -51,6 +51,7 @@ header.hero{max-width:1060px; margin:0 auto; padding:14px 16px; display:flex; al
 .brandrow .bemblem{display:block; width:40px; height:40px}
 .brandrow .bemblem svg{width:100%; height:100%; display:block}
 .brandrow svg.wm{display:block}
+.nubrand{margin-bottom:var(--s4)}
 .herohead{margin-bottom:var(--s4)}
 .eyebrow{font-family:var(--disp); font-weight:600; letter-spacing:.18em; text-transform:uppercase; font-size:13px; color:var(--mut)}
 .hero h1{font-family:var(--disp); font-weight:600; font-size:23px; line-height:1.1; letter-spacing:.01em; color:var(--ink); margin-top:1px}
@@ -341,8 +342,8 @@ svg{display:block; width:100%; height:auto}
 button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 
 /* ---------- Inställningar / onboarding ---------- */
-#settings{display:none; position:fixed; inset:0; background:rgba(7,11,19,.78); z-index:50; overflow-y:auto}
-#settings.show{display:block}
+#tab-profil{max-width:1060px; margin:0 auto; padding:calc(14px + env(safe-area-inset-top)) 16px 0}
+#tab-profil .panel{margin:0 auto 24px}
 .panel{max-width:680px; margin:5vh auto; background:var(--surface); border:1px solid var(--line);
   border-radius:16px; padding:22px}
 .panel h2{margin-bottom:14px}
@@ -395,7 +396,13 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
   width:26px; height:2px; border-radius:0 0 3px 3px; background:var(--accent)}
 .tabbar button .badge{position:absolute; top:5px; right:calc(50% - 18px); width:7px; height:7px; border-radius:50%;
   background:var(--accent); box-shadow:0 0 0 2px var(--bg)}
-.lastupd-line{text-align:center; color:var(--faint); font-size:12px; margin:var(--s4) 0 0}
+.lastupd-line{display:flex; align-items:center; justify-content:center; gap:7px; width:100%;
+  background:none; border:0; font-family:var(--body); text-align:center; color:var(--faint); font-size:12px;
+  margin:var(--s4) 0 0; padding:8px 0; cursor:pointer; border-radius:10px}
+.lastupd-line:hover{color:var(--mut)}
+.lastupd-line .lu-ic{font-size:14px; line-height:1; display:inline-block}
+.lastupd-line .lu-ic.spin{animation:spin .8s linear infinite}
+@media (prefers-reduced-motion: reduce){ .lastupd-line .lu-ic.spin{animation:none} }
 
 /* ---------- Segmentkontroll ---------- */
 .segctrl{display:flex; gap:4px; padding:4px; background:var(--surface-lo); border:1px solid var(--line);
@@ -403,6 +410,12 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 .segctrl button{flex:1; background:none; border:0; color:var(--mut); font-family:var(--disp); font-weight:600;
   font-size:14px; letter-spacing:.1em; text-transform:uppercase; padding:9px 8px; border-radius:9px; cursor:pointer}
 .segctrl button.active{background:var(--surface-hi); color:var(--ink); box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+/* FORM-toggeln dockad nedtill, underordnad tabbaren (flyter ovanför den) */
+#form-seg{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(64px + env(safe-area-inset-bottom));
+  z-index:30; width:min(92%,440px); margin:0; box-shadow:0 6px 22px rgba(0,0,0,.4);
+  background:rgba(13,19,30,.94); backdrop-filter:blur(10px)}
+#form-seg button{font-size:12.5px; padding:8px 8px}
+#tab-form{padding-bottom:58px}
 
 /* ---------- Toast ---------- */
 #toast{position:fixed; left:50%; bottom:calc(72px + env(safe-area-inset-bottom)); transform:translateX(-50%) translateY(8px);
@@ -459,19 +472,12 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 <div id="splash" aria-hidden="true"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
-<header class="hero">
-  <div class="brandrow" id="brandrow"></div>
-  <div class="hero-actions">
-    <button class="iconbtn" id="btn-refresh" title="Uppdatera" aria-label="Uppdatera">↻</button>
-    <button class="iconbtn" id="btn-settings" title="Inställningar" aria-label="Inställningar">⚙</button>
-  </div>
-</header>
-
 <main>
   <div id="banner" role="alert"></div>
 
   <!-- ===== NU ===== -->
   <div class="tabpanel" id="tab-nu" data-tab="nu">
+    <div class="brandrow nubrand" id="brandrow"></div>
     <div class="herohead">
       <div class="eyebrow" id="eyebrow">Träningsöversikt</div>
       <h1 id="racename">TRIZONE</h1>
@@ -481,10 +487,6 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     </div>
 
     <section id="sec-oversikt">
-      <div class="timeline">
-        <div class="tl-band" id="tl-band" role="list" aria-label="Periodisering"></div>
-        <div class="tl-detail" id="tl-detail"></div>
-      </div>
       <div id="status"></div>
       <div id="focus"></div>
       <div id="nextkey"></div>
@@ -505,11 +507,15 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
       </div>
     </section>
 
-    <p class="lastupd-line" id="lastupd">Ingen data hämtad ännu</p>
+    <button class="lastupd-line" id="lastupd" type="button" title="Uppdatera"><span class="lu-ic" aria-hidden="true">↻</span><span class="lu-txt">Ingen data hämtad ännu</span></button>
   </div>
 
   <!-- ===== PLAN ===== -->
   <div class="tabpanel" id="tab-plan" data-tab="plan" hidden>
+    <div class="timeline">
+      <div class="tl-band" id="tl-band" role="list" aria-label="Periodisering"></div>
+      <div class="tl-detail" id="tl-detail"></div>
+    </div>
     <section id="sec-delmal">
       <h2>Delmål <small>plan vs utfall per gren</small></h2>
       <div id="ms-list"></div>
@@ -600,7 +606,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 
 <nav class="tabbar" id="tabbar" role="tablist"></nav>
 
-<div id="settings">
+<div class="tabpanel" id="tab-profil" data-tab="profil" hidden>
   <div class="panel">
     <h2>Inställningar</h2>
     <label for="in-key">intervals.icu API-nyckel</label>
@@ -634,7 +640,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
     </div>
     <div class="row">
       <button class="btn primary" id="btn-save">Spara & hämta data</button>
-      <button class="btn" id="btn-close">Stäng</button>
+      <button class="btn" id="btn-close">Klar</button>
     </div>
     <div id="buildstamp" style="text-align:center;color:var(--faint);font-size:11px;letter-spacing:.04em;margin-top:2px"></div>
     <div class="help">
@@ -672,7 +678,7 @@ const DAY=86400000;
 const FALLBACK_RACE={name:"Din tävling", date:"2099-01-01", placeholder:true};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
-const BUILD="v5 · 2026-06-22";
+const BUILD="v6 · 2026-06-22";
 let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
 
 /* ============ Hjälpare ============ */
@@ -748,7 +754,7 @@ async function fetchIntervals(path){
 
 async function refreshAll(){
   if(!cfg) return;
-  $("#btn-refresh").disabled=true; $("#btn-refresh").classList.add("spin");
+  { const lu=$("#lastupd"); if(lu){ lu.disabled=true; const ic=lu.querySelector(".lu-ic"); if(ic) ic.classList.add("spin"); } }
   const t=today();
   const tasks={
     activities: fetchIntervals("/activities?oldest="+iso(addDays(t,-370))+"&newest="+iso(addDays(t,1))),
@@ -773,7 +779,7 @@ async function refreshAll(){
   if(badTabs.length) msgs.push("Länken för "+badTabs.join(" och ")+" gav ingen läsbar CSV. Kontrollera att den kommer från Arkiv → Dela → Publicera på webben (flik + format CSV) i ett Google Kalkylark — inte en vanlig fil- eller delningslänk.");
   if(msgs.length) showBanner(msgs.join(" — ")); else hideBanner();
   localStorage.setItem(CACHE_KEY, JSON.stringify({ts:Date.now(), data}));
-  $("#btn-refresh").disabled=false; $("#btn-refresh").classList.remove("spin");
+  { const lu=$("#lastupd"); if(lu){ lu.disabled=false; const ic=lu.querySelector(".lu-ic"); if(ic) ic.classList.remove("spin"); } }
   renderAll(Date.now());
 }
 function showBanner(msg){ const b=$("#banner"); b.textContent=msg; b.classList.add("show"); }
@@ -919,7 +925,8 @@ function renderHeader(plan){
   $("#racename").textContent="Mot "+(r.name.replace(/ ?triathlon/i,"")||"racet");
   $("#cd-n").textContent = days>=0? days : "✓";
   $("#cd-u").textContent = days>1? "dagar kvar" : days===1? "dag kvar" : days===0? "RACE-DAG" : "genomfört";
-  $("#cd-date").textContent = r.name+" · "+r.date.toLocaleDateString("sv-SE",{day:"numeric",month:"long",year:"numeric"})+" · vecka "+weekNo(r.date);
+  const _ph=currentPhase(plan);
+  $("#cd-date").textContent = r.name+" · "+r.date.toLocaleDateString("sv-SE",{day:"numeric",month:"long",year:"numeric"})+" · vecka "+weekNo(r.date)+(_ph&&_ph.name? " · "+_ph.name : "");
   const up=(plan.races||[]).filter(x=>x.date>=t);
   const nxt=up.length>1? up[1] : null;
   $("#cd-next").textContent = nxt? "Därefter: "+nxt.name+" · "+dfmt(nxt.date)+" (om "+Math.ceil((nxt.date-t)/DAY)+" dagar)" : "";
@@ -1550,7 +1557,8 @@ const TABS=[
   {id:"nu",   lbl:"Nu",      icon:'<path d="M3 12h4l2 5 4-11 2 6h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'},
   {id:"plan", lbl:"Plan",    icon:'<path d="M6 3v18M6 4h11l-2 3 2 3H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'},
   {id:"form", lbl:"Form",    icon:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'},
-  {id:"tavling", lbl:"Tävling", icon:'<circle cx="12" cy="13" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 13V9M9 2h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}
+  {id:"tavling", lbl:"Tävling", icon:'<circle cx="12" cy="13" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 13V9M9 2h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'},
+  {id:"profil", lbl:"Profil", icon:'<circle cx="12" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 20a7 7 0 0 1 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}
 ];
 let activeTab="nu", tabInitialized=false;
 function buildTabbar(){
@@ -1560,6 +1568,7 @@ function buildTabbar(){
 }
 function switchTab(id){
   activeTab=id;
+  if(id==="profil") openSettings();
   document.querySelectorAll(".tabpanel").forEach(p=>p.hidden = p.getAttribute("data-tab")!==id);
   $("#tabbar").querySelectorAll("button").forEach(b=>b.classList.toggle("active", b.getAttribute("data-tab")===id));
   window.scrollTo({top:0, behavior:"auto"});
@@ -1926,7 +1935,7 @@ function renderAll(ts){
   updateTabBadges();
   if(!tabInitialized){ tabInitialized=true; if(raceImminent) switchTab("tavling"); }
   $("#onboard").innerHTML="";
-  if(ts) $("#lastupd").textContent="Uppdaterad "+new Date(ts).toLocaleString("sv-SE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+  if(ts){ const lt=$("#lastupd").querySelector(".lu-txt"); if(lt) lt.textContent="Uppdaterad "+new Date(ts).toLocaleString("sv-SE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}); }
 }
 
 /* ============ Varumärke (inline SVG) ============ */
@@ -1995,9 +2004,8 @@ function readCaps(){ const o={};
 function openSettings(){ const c=cfg||{};
   $("#in-key").value=c.apiKey||""; $("#in-id").value=c.athleteId||"";
   $("#in-plan").value=c.planUrl||""; $("#in-ms").value=c.msUrl||""; $("#in-race").value=c.raceUrl||""; $("#in-edit").value=c.editUrl||""; $("#in-proxy").value=c.proxy||"";
-  fillBands("in"); fillCaps();
-  $("#settings").classList.add("show"); }
-function closeSettings(){ $("#settings").classList.remove("show"); }
+  fillBands("in"); fillCaps(); }
+function closeSettings(){ switchTab("nu"); }
 function saveSettings(){
   cfg={ apiKey:$("#in-key").value.trim(), athleteId:$("#in-id").value.trim(),
         planUrl:$("#in-plan").value.trim(), msUrl:$("#in-ms").value.trim(), raceUrl:$("#in-race").value.trim(), editUrl:$("#in-edit").value.trim(), proxy:$("#in-proxy").value.trim(),
@@ -2024,7 +2032,7 @@ function showOnboarding(){
       '<button class="btn" id="ob-save">Spara pulszoner</button>'+
     '</div></div>';
   fillBands("ob");
-  $("#btn-onboard").addEventListener("click",openSettings);
+  $("#btn-onboard").addEventListener("click",()=>switchTab("profil"));
   $("#ob-save").addEventListener("click",()=>{ cfg=Object.assign(cfg||{}, readBands("ob"));
     try{ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }catch(e){}
     toast("Pulszoner sparade ✓"); }); }
@@ -2039,13 +2047,11 @@ function boot(){
     if(e.target.closest && e.target.closest(".chart")) return;
     document.querySelectorAll(".chart").forEach(c=>{ if(c._dismiss) c._dismiss(); }); }, true);
   hideSplash();
-  $("#btn-settings").addEventListener("click",openSettings);
   $("#btn-close").addEventListener("click",closeSettings);
   $("#btn-save").addEventListener("click",saveSettings);
-  $("#btn-refresh").addEventListener("click",refreshAll);
+  $("#lastupd").addEventListener("click",refreshAll);
   $("#btn-report").addEventListener("click",copyReport);
-  $("#settings").addEventListener("click",e=>{ if(e.target.id==="settings") closeSettings(); });
-  document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeSettings(); });
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape" && activeTab==="profil") closeSettings(); });
   const mq=matchMedia("(orientation: landscape)");
   const onOri=()=>{ if(_plan) renderTimeline(_plan); };
   if(mq.addEventListener) mq.addEventListener("change",onOri); else if(mq.addListener) mq.addListener(onOri);
