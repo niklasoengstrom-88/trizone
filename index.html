@@ -415,7 +415,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 .lastupd-line .lu-ic{font-size:14px; line-height:1; display:inline-block}
 .lastupd-line .lu-ic.spin{animation:spin .8s linear infinite}
 @media (prefers-reduced-motion: reduce){ .lastupd-line .lu-ic.spin{animation:none} }
-#ptr{position:fixed; left:50%; top:0; z-index:45; width:34px; height:34px; border-radius:50%;
+#ptr{position:fixed; left:50%; top:calc(env(safe-area-inset-top) + 14px); z-index:45; width:34px; height:34px; border-radius:50%;
   display:flex; align-items:center; justify-content:center; font-size:18px; line-height:1;
   background:var(--surface-hi); border:1px solid var(--line); box-shadow:0 4px 14px rgba(0,0,0,.4);
   color:var(--mut); opacity:0; pointer-events:none; transform:translate(-50%,-44px)}
@@ -633,7 +633,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 <div class="tabpanel" id="tab-profil" data-tab="profil" hidden>
   <div class="panel">
     <h2>Inställningar</h2>
-    <details class="pg" open><summary>Anslutning</summary><div class="pg-body">
+    <details class="pg"><summary>Anslutning</summary><div class="pg-body">
     <label for="in-key">intervals.icu API-nyckel</label>
     <input id="in-key" type="password" autocomplete="off" placeholder="t.ex. 1a2b3c…">
     <label for="in-id">intervals.icu Athlete ID</label>
@@ -705,7 +705,7 @@ const DAY=86400000;
 const FALLBACK_RACE={name:"Din tävling", date:"2099-01-01", placeholder:true};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
-const BUILD="v10 · 2026-06-24";
+const BUILD="v11 · 2026-06-24";
 let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
 
 /* ============ Hjälpare ============ */
