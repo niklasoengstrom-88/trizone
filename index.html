@@ -37,12 +37,13 @@
 html{color-scheme:dark}
 html,body{overflow-x:hidden; max-width:100%}
 body{background:var(--bg); color:var(--ink); font-family:var(--body); font-size:15px; line-height:1.5;
-  -webkit-font-smoothing:antialiased; padding-bottom:calc(64px + env(safe-area-inset-bottom));
-  font-variant-numeric:tabular-nums}
+  -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums;
+  height:100vh; height:100dvh; display:flex; flex-direction:column}
 svg text{font-variant-numeric:tabular-nums}
 a{color:var(--accent)}
 button{font-family:var(--body); cursor:pointer}
-main{max-width:1060px; margin:0 auto; padding:calc(14px + env(safe-area-inset-top)) 16px 0}
+main{max-width:1060px; margin:0 auto; padding:calc(14px + env(safe-area-inset-top)) 16px 0;
+  width:100%; flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior-y:contain}
 ::selection{background:#2A3B57}
 
 /* ---------- Header / hero ---------- */
@@ -395,7 +396,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 .tabpanel{animation:fade .18s ease}
 @keyframes fade{from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none}}
 @media (prefers-reduced-motion: reduce){ .tabpanel{animation:none} }
-.tabbar{position:fixed; left:0; right:0; bottom:0; z-index:40; display:flex;
+.tabbar{flex:0 0 auto; z-index:40; display:flex;
   background:rgba(13,19,30,.94); backdrop-filter:blur(12px); border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom)}
 .tabbar button{flex:1; background:none; border:0; padding:8px 4px 9px; display:flex; flex-direction:column;
@@ -704,7 +705,7 @@ const DAY=86400000;
 const FALLBACK_RACE={name:"Din tävling", date:"2099-01-01", placeholder:true};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
-const BUILD="v12 · 2026-06-24";
+const BUILD="v13 · 2026-06-24";
 let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
 
 /* ============ Hjälpare ============ */
@@ -1597,7 +1598,7 @@ function switchTab(id){
   if(id==="profil") openSettings();
   document.querySelectorAll(".tabpanel").forEach(p=>p.hidden = p.getAttribute("data-tab")!==id);
   $("#tabbar").querySelectorAll("button").forEach(b=>b.classList.toggle("active", b.getAttribute("data-tab")===id));
-  window.scrollTo({top:0, behavior:"auto"});
+  const _m=document.querySelector("main"); if(_m) _m.scrollTop=0;
 }
 function updateTabBadges(){
   const btn=$("#tabbar").querySelector('button[data-tab="tavling"]');
@@ -2076,16 +2077,17 @@ function initPullToRefresh(){
   const standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true;
   if(!standalone) return;
   const ind=$("#ptr"); if(!ind) return;
+  const sc=document.querySelector("main");
   const TH=72, MAX=120;
   let startY=0, pulling=false, dist=0;
   const park=()=>{ ind.style.transform="translate(-50%,-44px)"; ind.style.opacity="0"; ind.classList.remove("armed"); };
   window.addEventListener("touchstart",(e)=>{
-    if(window.scrollY>0 || e.touches.length!==1){ pulling=false; return; }
+    if((sc?sc.scrollTop:0)>0 || e.touches.length!==1){ pulling=false; return; }
     startY=e.touches[0].clientY; pulling=true; dist=0; ind.classList.remove("refreshing");
   }, {passive:true});
   window.addEventListener("touchmove",(e)=>{
     if(!pulling) return;
-    if(window.scrollY>0){ pulling=false; park(); return; }
+    if((sc?sc.scrollTop:0)>0){ pulling=false; park(); return; }
     dist=e.touches[0].clientY-startY;
     if(dist<=0){ park(); return; }
     e.preventDefault();                              // vi äger gesten — stoppa rubber-band
