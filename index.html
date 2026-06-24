@@ -345,7 +345,6 @@ svg{display:block; width:100%; height:auto}
 button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 
 /* ---------- Inställningar / onboarding ---------- */
-#tab-profil{max-width:1060px; margin:0 auto; padding:calc(14px + env(safe-area-inset-top)) 16px 0}
 #tab-profil .panel{margin:0 auto 24px}
 .panel{max-width:680px; margin:5vh auto; background:var(--surface); border:1px solid var(--line);
   border-radius:16px; padding:22px}
@@ -626,76 +625,76 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
       <div id="race-empty" hidden></div>
     </section>
   </div>
+   <div class="tabpanel" id="tab-profil" data-tab="profil" hidden>
+     <div class="panel">
+       <h2>Inställningar</h2>
+       <details class="pg"><summary>Anslutning</summary><div class="pg-body">
+       <label for="in-key">intervals.icu API-nyckel</label>
+       <input id="in-key" type="password" autocomplete="off" placeholder="t.ex. 1a2b3c…">
+       <label for="in-id">intervals.icu Athlete ID</label>
+       <input id="in-id" type="text" placeholder="t.ex. i123456">
+       <label for="in-plan">Google Sheet — CSV-länk för fliken Plan</label>
+       <input id="in-plan" type="url" placeholder="https://docs.google.com/…&output=csv">
+       <label for="in-ms">Google Sheet — CSV-länk för fliken Delmal</label>
+       <input id="in-ms" type="url" placeholder="https://docs.google.com/…&output=csv">
+       <label for="in-race">Google Sheet — CSV-länk för fliken Race (valfri, tävlingsdag)</label>
+       <input id="in-race" type="url" placeholder="https://docs.google.com/…&output=csv">
+       <label for="in-edit">Google Sheet — redigeringslänk (valfri, för genväg)</label>
+       <input id="in-edit" type="url" placeholder="https://docs.google.com/spreadsheets/d/…/edit">
+       <label for="in-proxy">Proxy-prefix (lämna tomt — används bara om direktanrop blockeras)</label>
+       <input id="in-proxy" type="url" placeholder="https://din-worker.workers.dev/?url="></div></details>
+       <details class="pg"><summary>Pulsfönster</summary><div class="pg-body">
+       <p class="zhint">Det aeroba pulsintervall (ungefär din Z2) som watt-vid-puls och tempo-vid-puls jämför inom — håller pulsen konstant så trenden blir läsbar. Dina egentliga zoner Z1–Z5 sätter du i intervals.icu; appen läser dem därifrån.</p>
+       <div class="zgrid">
+         <div class="zf"><span>Cykel — lägsta puls</span><input id="in-blo" type="number" inputmode="numeric" placeholder="130"></div>
+         <div class="zf"><span>Cykel — högsta puls</span><input id="in-bhi" type="number" inputmode="numeric" placeholder="145"></div>
+         <div class="zf"><span>Löpning — lägsta puls</span><input id="in-rlo" type="number" inputmode="numeric" placeholder="124"></div>
+         <div class="zf"><span>Löpning — högsta puls</span><input id="in-rhi" type="number" inputmode="numeric" placeholder="150"></div>
+       </div></div></details>
+       <details class="pg"><summary>Volymtak</summary><div class="pg-body">
+       <p class="zhint">Ett räcke du själv sätter: appen varnar när en grens veckovolym ökar snabbare än vald procent av de tre föregående veckornas snitt. Slå på för de grenar där du vill hålla igen på snabba hopp (t.ex. löpning vid skadekänslighet). Det är inget medicinskt råd — bara en gräns du valt.</p>
+       <div class="capgrid">
+         <div class="capf"><label class="capon"><input id="in-capSwimOn" type="checkbox"><span>Simning</span></label><span class="cappct"><input id="in-capSwimPct" type="number" inputmode="numeric" placeholder="110">%</span></div>
+         <div class="capf"><label class="capon"><input id="in-capBikeOn" type="checkbox"><span>Cykel</span></label><span class="cappct"><input id="in-capBikePct" type="number" inputmode="numeric" placeholder="110">%</span></div>
+         <div class="capf"><label class="capon"><input id="in-capRunOn" type="checkbox"><span>Löpning</span></label><span class="cappct"><input id="in-capRunPct" type="number" inputmode="numeric" placeholder="110">%</span></div>
+       </div></div></details>
+       <details class="pg"><summary>Hjälp &amp; setup</summary><div class="pg-body">
+       <div class="help">
+         <h3>1 · intervals.icu</h3>
+         <ol>
+           <li>Settings → Developer → kopiera <b>API key</b>.</li>
+           <li>Athlete ID är <code>i</code>-numret i din profil-URL.</li>
+           <li>Sätt zoner under Settings: max-HR, LTHR och FTP — annars blir zonberäkningen fel.</li>
+         </ol>
+         <h3>2 · Google Sheet (två flikar)</h3>
+         <p>Flik <b>Plan</b>, exakt dessa kolumnrubriker:</p>
+         <p><code>typ</code> <code>namn</code> <code>start</code> <code>slut</code> <code>mal_lag</code> <code>kategori</code> <code>anteckning</code></p>
+         <p>typ = <code>fas</code>, <code>race</code> eller <code>vila</code> (återhämtningsvecka). Datum som ÅÅÅÅ-MM-DD. mal_lag = mål-% lågintensivt (t.ex. 75). kategori = valfri etikett ovanför tävlingsnamnet på race-rader (t.ex. Marathon, Olympisk distans, Gravel 120 km).</p>
+         <p style="margin-top:8px">Flik <b>Delmal</b>:</p>
+         <p><code>gren</code> <code>beskrivning</code> <code>plandatum</code> <code>faktiskt</code> <code>status</code> <code>varde</code> <code>anteckning</code></p>
+         <p>gren = sim/cykel/löp/brick/styrka · status = klart/pågår/skjutet/risk (tomt = planerat) · varde = valfri siffra, t.ex. längsta kontinuerliga simdistans i meter.</p>
+         <h3>Flik <b>Race</b> (valfri — visar tävlingsdagskortet)</h3>
+         <p><code>race</code> <code>gren</code> <code>mal</code> <code>split</code> <code>strategi</code> <code>distans</code></p>
+         <p>En rad per gren: gren = Sim/T1/Cykel/T2/Löp/Total. mal = mål (t.ex. 2:05/100m, 225 W). split = beräknad tid. strategi = en rad coach-instruktion. race = tävlingens namn (matchar Plan); lämna tomt så gäller raden närmaste tävling. distans = valfri, för beredskapskortet vid udda lopp (sim i meter, cykel/löp i km) — vanliga kategorier behöver den inte.</p>
+         <h3>3 · Publicera flikarna som CSV</h3>
+         <ol>
+           <li>I Sheet: Arkiv → Dela → <b>Publicera på webben</b>.</li>
+           <li>Välj fliken Plan, format <b>CSV</b>, publicera, kopiera länken hit.</li>
+           <li>Upprepa för fliken Delmal.</li>
+         </ol>
+       </div>
+       </div></details>
+       <div class="row">
+         <button class="btn primary" id="btn-save">Spara &amp; hämta data</button>
+         <button class="btn" id="btn-close">Klar</button>
+       </div>
+       <div id="buildstamp" style="text-align:center;color:var(--faint);font-size:11px;letter-spacing:.04em;margin-top:2px"></div>
+     </div>
+   </div>
 </main>
 
 <nav class="tabbar" id="tabbar" role="tablist"></nav>
 
-<div class="tabpanel" id="tab-profil" data-tab="profil" hidden>
-  <div class="panel">
-    <h2>Inställningar</h2>
-    <details class="pg"><summary>Anslutning</summary><div class="pg-body">
-    <label for="in-key">intervals.icu API-nyckel</label>
-    <input id="in-key" type="password" autocomplete="off" placeholder="t.ex. 1a2b3c…">
-    <label for="in-id">intervals.icu Athlete ID</label>
-    <input id="in-id" type="text" placeholder="t.ex. i123456">
-    <label for="in-plan">Google Sheet — CSV-länk för fliken Plan</label>
-    <input id="in-plan" type="url" placeholder="https://docs.google.com/…&output=csv">
-    <label for="in-ms">Google Sheet — CSV-länk för fliken Delmal</label>
-    <input id="in-ms" type="url" placeholder="https://docs.google.com/…&output=csv">
-    <label for="in-race">Google Sheet — CSV-länk för fliken Race (valfri, tävlingsdag)</label>
-    <input id="in-race" type="url" placeholder="https://docs.google.com/…&output=csv">
-    <label for="in-edit">Google Sheet — redigeringslänk (valfri, för genväg)</label>
-    <input id="in-edit" type="url" placeholder="https://docs.google.com/spreadsheets/d/…/edit">
-    <label for="in-proxy">Proxy-prefix (lämna tomt — används bara om direktanrop blockeras)</label>
-    <input id="in-proxy" type="url" placeholder="https://din-worker.workers.dev/?url="></div></details>
-    <details class="pg"><summary>Pulsfönster</summary><div class="pg-body">
-    <p class="zhint">Det aeroba pulsintervall (ungefär din Z2) som watt-vid-puls och tempo-vid-puls jämför inom — håller pulsen konstant så trenden blir läsbar. Dina egentliga zoner Z1–Z5 sätter du i intervals.icu; appen läser dem därifrån.</p>
-    <div class="zgrid">
-      <div class="zf"><span>Cykel — lägsta puls</span><input id="in-blo" type="number" inputmode="numeric" placeholder="130"></div>
-      <div class="zf"><span>Cykel — högsta puls</span><input id="in-bhi" type="number" inputmode="numeric" placeholder="145"></div>
-      <div class="zf"><span>Löpning — lägsta puls</span><input id="in-rlo" type="number" inputmode="numeric" placeholder="124"></div>
-      <div class="zf"><span>Löpning — högsta puls</span><input id="in-rhi" type="number" inputmode="numeric" placeholder="150"></div>
-    </div></div></details>
-    <details class="pg"><summary>Volymtak</summary><div class="pg-body">
-    <p class="zhint">Ett räcke du själv sätter: appen varnar när en grens veckovolym ökar snabbare än vald procent av de tre föregående veckornas snitt. Slå på för de grenar där du vill hålla igen på snabba hopp (t.ex. löpning vid skadekänslighet). Det är inget medicinskt råd — bara en gräns du valt.</p>
-    <div class="capgrid">
-      <div class="capf"><label class="capon"><input id="in-capSwimOn" type="checkbox"><span>Simning</span></label><span class="cappct"><input id="in-capSwimPct" type="number" inputmode="numeric" placeholder="110">%</span></div>
-      <div class="capf"><label class="capon"><input id="in-capBikeOn" type="checkbox"><span>Cykel</span></label><span class="cappct"><input id="in-capBikePct" type="number" inputmode="numeric" placeholder="110">%</span></div>
-      <div class="capf"><label class="capon"><input id="in-capRunOn" type="checkbox"><span>Löpning</span></label><span class="cappct"><input id="in-capRunPct" type="number" inputmode="numeric" placeholder="110">%</span></div>
-    </div></div></details>
-    <details class="pg"><summary>Hjälp &amp; setup</summary><div class="pg-body">
-    <div class="help">
-      <h3>1 · intervals.icu</h3>
-      <ol>
-        <li>Settings → Developer → kopiera <b>API key</b>.</li>
-        <li>Athlete ID är <code>i</code>-numret i din profil-URL.</li>
-        <li>Sätt zoner under Settings: max-HR, LTHR och FTP — annars blir zonberäkningen fel.</li>
-      </ol>
-      <h3>2 · Google Sheet (två flikar)</h3>
-      <p>Flik <b>Plan</b>, exakt dessa kolumnrubriker:</p>
-      <p><code>typ</code> <code>namn</code> <code>start</code> <code>slut</code> <code>mal_lag</code> <code>kategori</code> <code>anteckning</code></p>
-      <p>typ = <code>fas</code>, <code>race</code> eller <code>vila</code> (återhämtningsvecka). Datum som ÅÅÅÅ-MM-DD. mal_lag = mål-% lågintensivt (t.ex. 75). kategori = valfri etikett ovanför tävlingsnamnet på race-rader (t.ex. Marathon, Olympisk distans, Gravel 120 km).</p>
-      <p style="margin-top:8px">Flik <b>Delmal</b>:</p>
-      <p><code>gren</code> <code>beskrivning</code> <code>plandatum</code> <code>faktiskt</code> <code>status</code> <code>varde</code> <code>anteckning</code></p>
-      <p>gren = sim/cykel/löp/brick/styrka · status = klart/pågår/skjutet/risk (tomt = planerat) · varde = valfri siffra, t.ex. längsta kontinuerliga simdistans i meter.</p>
-      <h3>Flik <b>Race</b> (valfri — visar tävlingsdagskortet)</h3>
-      <p><code>race</code> <code>gren</code> <code>mal</code> <code>split</code> <code>strategi</code> <code>distans</code></p>
-      <p>En rad per gren: gren = Sim/T1/Cykel/T2/Löp/Total. mal = mål (t.ex. 2:05/100m, 225 W). split = beräknad tid. strategi = en rad coach-instruktion. race = tävlingens namn (matchar Plan); lämna tomt så gäller raden närmaste tävling. distans = valfri, för beredskapskortet vid udda lopp (sim i meter, cykel/löp i km) — vanliga kategorier behöver den inte.</p>
-      <h3>3 · Publicera flikarna som CSV</h3>
-      <ol>
-        <li>I Sheet: Arkiv → Dela → <b>Publicera på webben</b>.</li>
-        <li>Välj fliken Plan, format <b>CSV</b>, publicera, kopiera länken hit.</li>
-        <li>Upprepa för fliken Delmal.</li>
-      </ol>
-    </div>
-    </div></details>
-    <div class="row">
-      <button class="btn primary" id="btn-save">Spara &amp; hämta data</button>
-      <button class="btn" id="btn-close">Klar</button>
-    </div>
-    <div id="buildstamp" style="text-align:center;color:var(--faint);font-size:11px;letter-spacing:.04em;margin-top:2px"></div>
-  </div>
-</div>
 
 <script>
 "use strict";
@@ -705,7 +704,7 @@ const DAY=86400000;
 const FALLBACK_RACE={name:"Din tävling", date:"2099-01-01", placeholder:true};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
-const BUILD="v11 · 2026-06-24";
+const BUILD="v12 · 2026-06-24";
 let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
 
 /* ============ Hjälpare ============ */
