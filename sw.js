@@ -1,11 +1,13 @@
 /* TRIZONE service worker — network-first för sidan, cache som offline-fallback. */
-const CACHE = "trizone-v8";
+const CACHE = "trizone-v10";
 const ASSETS = [
   "./index.html",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
-  "./icon-maskable-512.png"
+  "./icon-maskable-512.png",
+  "./favicon-32.png",
+  "./favicon-16.png"
 ];
 
 self.addEventListener("install", (e) => {

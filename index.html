@@ -9,7 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TRIZONE">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
 <title>Triathlonöversikt</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -704,7 +705,7 @@ const DAY=86400000;
 const FALLBACK_RACE={name:"Din tävling", date:"2099-01-01", placeholder:true};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
-const BUILD="v8 · 2026-06-22";
+const BUILD="v10 · 2026-06-24";
 let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
 
 /* ============ Hjälpare ============ */
@@ -1980,10 +1981,18 @@ function emblemArcPath(R,a0,a1){
   return "M "+s[0]+" "+s[1]+" A "+R+" "+R+" 0 "+large+" 1 "+e[0]+" "+e[1];
 }
 function emblemSVG(){
-  let p="";
-  for(const [col,R,a0,a1] of EMBLEM_ARCS)
-    p+='<path d="'+emblemArcPath(R,a0,a1)+'" fill="none" stroke="'+col+'" stroke-width="14" stroke-linecap="round"/>';
-  return '<svg viewBox="0 0 100 100" aria-hidden="true">'+p+'</svg>';
+  // TRIZONE-märket (quipu, monokrom + accent-kärna). Bärlina + tre pendlar i olika längd
+  // (sim kortast, löp mellan, cykel längst). Snöre/bärlina/sidoknutar = currentColor → monokrom
+  // favicon gratis. Mittknuten (kärnan) i appens interaktions-accent #5B93E6.
+  return '<svg viewBox="0 0 24 24" aria-hidden="true">'+
+    '<line x1="4" y1="6" x2="20" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'+
+    '<line x1="7" y1="6" x2="7" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'+
+    '<circle cx="7" cy="12" r="1.5" fill="currentColor"/>'+
+    '<line x1="17" y1="6" x2="17" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'+
+    '<circle cx="17" cy="9" r="1.5" fill="currentColor"/>'+
+    '<line x1="12" y1="6" x2="12" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'+
+    '<circle cx="12" cy="16" r="2.5" fill="#5B93E6"/>'+
+    '</svg>';
 }
 // Ordmärke: "TRIZON" + tre staplar som E (≡). textLength låser bredden så E:t hamnar rätt i alla webbläsare.
 const WM_GAP=0; // finjustering av N→E-glappet (px i viewBox-skala), nudgas vid behov
