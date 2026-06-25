@@ -39,6 +39,8 @@ html,body{overflow-x:hidden; max-width:100%}
 body{background:var(--bg); color:var(--ink); font-family:var(--body); font-size:15px; line-height:1.5;
   -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums;
   height:100vh; height:100dvh; display:flex; flex-direction:column}
+/* iOS standalone: 100dvh löser ibland ut för kort → fyll faktisk skärmhöjd. Scopat till iOS WebKit, rör ej Android. */
+@supports (-webkit-touch-callout: none){ body{ height:-webkit-fill-available } }
 svg text{font-variant-numeric:tabular-nums}
 a{color:var(--accent)}
 button{font-family:var(--body); cursor:pointer}
@@ -705,7 +707,7 @@ const DAY=86400000;
 const FALLBACK_RACE={name:"Din tävling", date:"2099-01-01", placeholder:true};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
-const BUILD="v13 · 2026-06-24";
+const BUILD="v14 · 2026-06-24";
 let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
 
 /* ============ Hjälpare ============ */
