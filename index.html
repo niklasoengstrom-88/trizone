@@ -280,15 +280,15 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 /* ---------- Diagram ---------- */
 svg{display:block; width:100%; height:auto}
 .chart{position:relative; touch-action:manipulation}
-#chartfs{position:fixed; inset:0; z-index:130; background:var(--bg); display:none; touch-action:manipulation}
-#chartfs.on{display:block}
-#chartfs .rot{position:absolute; top:50%; left:50%; width:100vh; height:100vw; transform:translate(-50%,-50%) rotate(90deg); display:flex; flex-direction:column; padding:14px 20px env(safe-area-inset-bottom)}
-#chartfs .fsbar{display:flex; align-items:center; justify-content:space-between; gap:12px; flex:0 0 auto}
-#chartfs .fst{font-size:13px; font-weight:600; color:#E6ECF5; letter-spacing:.02em}
+#chartfs{position:fixed; inset:0; z-index:130; background:var(--bg); display:none; touch-action:manipulation;
+  padding:calc(8px + env(safe-area-inset-top)) 16px calc(10px + env(safe-area-inset-bottom))}
+#chartfs.on{display:flex; flex-direction:column}
+#chartfs .fsbar{display:flex; align-items:center; justify-content:space-between; gap:12px; flex:0 0 auto; margin-bottom:8px}
+#chartfs .fst{font-size:14px; font-weight:600; color:#E6ECF5; letter-spacing:.02em}
 #chartfs .fsh{font-size:11px; color:#5C687C; margin-top:1px}
-#chartfs .fsx{appearance:none; background:var(--surface-hi); border:1px solid rgba(255,255,255,.08); color:#E6ECF5; width:36px; height:36px; border-radius:9px; font-size:17px; line-height:1; cursor:pointer; flex:0 0 auto}
-#chartfs .fschart{flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:12px 0 4px}
-#chartfs .fschart svg{width:100%; height:100%}
+#chartfs .fsx{appearance:none; background:var(--surface-hi); border:1px solid rgba(255,255,255,.08); color:#E6ECF5; width:38px; height:38px; border-radius:10px; font-size:18px; line-height:1; cursor:pointer; flex:0 0 auto}
+#chartfs .fschart{flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; justify-content:center}
+#chartfs .fschart>*{width:100%; max-width:920px; margin:0 auto}
 .tip{position:absolute; pointer-events:none; z-index:6; background:rgba(12,18,28,.72); border:1px solid rgba(91,147,230,.28);
   -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px);
   border-radius:9px; padding:6px 10px; font-size:11.5px; color:var(--ink); white-space:normal; max-width:min(72vw,280px);
@@ -572,7 +572,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
           <button type="button" class="info-btn" id="form-info-btn" aria-expanded="false" aria-label="Så tolkar du siffrorna">ⓘ</button>
         </div>
         <div class="form-info" id="form-info" hidden></div>
-        <div id="ch-form"></div>
+        <div id="ch-form" data-fsblock></div>
       </div>
       <div class="grid2">
         <div class="card">
@@ -705,7 +705,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 </main>
 
 <nav class="tabbar" id="tabbar" role="tablist"></nav>
-<div id="chartfs" aria-hidden="true"><div class="rot"><div class="fsbar"><div><div class="fst">Graf · helskärm</div><div class="fsh">Vänd telefonen · dubbeltryck för att stänga</div></div><button class="fsx" type="button" aria-label="Stäng">✕</button></div><div class="fschart"></div></div></div>
+<div id="chartfs" aria-hidden="true"><div class="fsbar"><div><div class="fst">Helskärm</div><div class="fsh">Interaktiv · ✕ eller dubbeltryck utanför grafen stänger</div></div><button class="fsx" type="button" aria-label="Stäng">✕</button></div><div class="fschart"></div></div>
 
 
 <script>
@@ -716,7 +716,7 @@ const DAY=86400000;
 const FALLBACK_RACE={name:"Din tävling", date:"2099-01-01", placeholder:true};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
-const BUILD="v17 · 2026-06-25";
+const BUILD="v18 · 2026-06-25";
 let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
 
 /* ============ Hjälpare ============ */
@@ -1875,7 +1875,8 @@ function renderForm(){
   const cut=addDays(today(),-formSpan);
   const s = formSpan>=9000 ? all : all.filter(p=>p.d>=cut);
   const n=s.length;
-  const W=460,H=180,pad={l:30,r:10,t:14,b:24}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  const fsMode=c.classList.contains("fs-live");
+  const W=460,H=fsMode?300:180,pad={l:30,r:10,t:14,b:24}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
   const max=Math.max(10,...s.map(p=>Math.max(p.ctl,p.atl)))*1.1;
   const maxLoad=Math.max(1,...s.map(p=>p.load));
   const X=i=>pad.l+iw*(n<2?0.5:i/(n-1)), Y=v=>pad.t+ih-ih*v/max;
@@ -2130,14 +2131,24 @@ function boot(){
   document.addEventListener("pointerdown",e=>{
     if(e.target.closest && e.target.closest(".chart")) return;
     document.querySelectorAll(".chart").forEach(c=>{ if(c._dismiss) c._dismiss(); }); }, true);
-  // P4: dubbeltryck på graf → helskärm i liggande; dubbeltryck (eller ✕) för att stänga
-  (function(){ const fs=$("#chartfs"); if(!fs) return; const stage=fs.querySelector(".fschart");
-    const openFs=(ch)=>{ const svg=ch.querySelector("svg"); if(!svg) return; stage.innerHTML=""; stage.appendChild(svg.cloneNode(true)); fs.classList.add("on"); fs.setAttribute("aria-hidden","false"); };
-    const closeFs=()=>{ fs.classList.remove("on"); fs.setAttribute("aria-hidden","true"); stage.innerHTML=""; };
+  // P4: dubbeltryck på graf → interaktiv helskärm. Flyttar det LEVANDE blocket (ej klon),
+  // så tidsspann-knappar + tooltips följer med. ✕ eller dubbeltryck utanför grafen stänger.
+  (function(){ const fs=$("#chartfs"); if(!fs) return; const host=fs.querySelector(".fschart");
+    let blk=null, home=null, nxt=null;
+    const openFs=(ch)=>{ if(fs.classList.contains("on")) return;
+      blk = ch.closest("[data-fsblock]") || ch; home=blk.parentNode; nxt=blk.nextSibling;
+      blk.classList.add("fs-live"); host.appendChild(blk);
+      fs.classList.add("on"); fs.setAttribute("aria-hidden","false");
+      if(blk.id==="ch-form" && typeof renderForm==="function") renderForm(); };
+    const closeFs=()=>{ if(!blk) return; const b=blk;
+      b.classList.remove("fs-live"); if(home) home.insertBefore(b, nxt);
+      blk=home=nxt=null; fs.classList.remove("on"); fs.setAttribute("aria-hidden","true");
+      if(b.id==="ch-form" && typeof renderForm==="function") renderForm(); };
     fs.querySelector(".fsx").addEventListener("click",ev=>{ ev.stopPropagation(); closeFs(); });
     let lt=0, lc=null;
     document.addEventListener("click",ev=>{
-      if(fs.classList.contains("on")){ const now=Date.now(); if(now-lt<350){ closeFs(); lt=0; } else lt=now; return; }
+      if(fs.classList.contains("on")){ if(ev.target.closest(".fs-live")) return; // knappar/tooltip i grafen lever vidare
+        const now=Date.now(); if(now-lt<350){ closeFs(); lt=0; } else lt=now; return; }
       const ch=ev.target.closest && ev.target.closest(".chart"); if(!ch){ lt=0; lc=null; return; }
       const now=Date.now();
       if(now-lt<350 && lc===ch){ openFs(ch); lt=0; lc=null; } else { lt=now; lc=ch; }
