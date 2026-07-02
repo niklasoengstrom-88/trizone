@@ -182,6 +182,11 @@ h2 small{font-family:var(--body); font-size:12px; letter-spacing:0; text-transfo
 .focus-sub{display:block; font-size:12.5px; color:var(--mut); margin-top:2px}
 .focus-main .chev{flex:0 0 auto; color:var(--faint); font-size:20px; align-self:center}
 .focus-why{margin-top:9px; padding-top:9px; border-top:1px solid var(--line); font-size:12.5px; color:var(--mut); line-height:1.45}
+/* Pausläge (v21) */
+.pausebtn{display:block; width:100%; text-align:center; background:none; border:1px dashed var(--line);
+  color:var(--faint); font-size:12.5px; padding:9px 12px; border-radius:12px; cursor:pointer; margin:2px 0 12px}
+.pausebtn:hover{color:var(--mut); border-color:var(--mut)}
+.pausebtn.active{border-style:solid; color:var(--mut)}
 #status{display:flex; gap:7px; margin-bottom:11px; flex-wrap:wrap}
 .stat{display:flex; align-items:center; gap:6px; padding:6px 11px; border-radius:999px;
   background:var(--surface); border:1px solid var(--line); cursor:pointer; font:inherit; color:var(--mut)}
@@ -447,12 +452,13 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
 @media (prefers-reduced-motion: reduce){ #toast{transition:none} }
 
 /* ---------- Tävlingsdag ---------- */
-.raceleg{display:flex; align-items:baseline; gap:11px; padding:11px 0; border-top:1px solid var(--line)}
+.raceleg{display:flex; align-items:baseline; gap:11px; padding:11px 0; border-top:1px solid var(--line); flex-wrap:wrap}
 .raceleg:first-child{border-top:0}
 .raceleg .dot{width:10px; height:10px; border-radius:50%; flex:0 0 auto; align-self:center}
 .raceleg .lg{flex:1; min-width:0}
 .raceleg .lg b{font-family:var(--disp); font-weight:600; font-size:16px; letter-spacing:.05em; text-transform:uppercase; display:block}
-.raceleg .lg .strat{color:var(--mut); font-size:13px; margin-top:2px}
+.raceleg .strat{flex:1 1 100%; color:var(--mut); font-size:13px; line-height:1.45; margin-top:3px; padding-left:21px}
+.raceleg.total .strat{padding-left:0}
 .raceleg .num{text-align:right; flex:0 0 auto}
 .raceleg .num .mal{font-variant-numeric:tabular-nums; font-size:14px}
 .raceleg .num .split{font-family:var(--disp); font-weight:600; font-size:17px; color:var(--ink)}
@@ -516,6 +522,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
       <div id="nextkey"></div>
       <div id="flags" aria-live="polite"></div>
       <div id="flaglog"></div>
+      <div id="pauserow"></div>
     </section>
 
     <div id="onboard"></div>
@@ -706,7 +713,7 @@ const DAY=86400000;
 const FALLBACK_RACE={name:"Din tävling", date:"2099-01-01", placeholder:true};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
-const BUILD="v20 · 2026-07-02";
+const BUILD="v21 · 2026-07-02";
 let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
 
 /* ============ Hjälpare ============ */
@@ -873,7 +880,10 @@ function nextMilestone(ms){
     .sort((a,b)=>a.plan-b.plan)[0] || null; }
 
 function computeFlags(weeks, plan, inten, ms){
+  /* v21: sömn/HRV når flagglagret via computeRecovery() — samma trösklar som Form-stripen,
+     ingen andra sanningskälla. Vilopulsflaggan nedan behålls som den är (snittbaserad, robustare). */
   const flags=[], t=today();
+  const recov=computeRecovery();
   const cw=weeks[weeks.length-1];
   if(cw && cw.caps){
     const verb={swim:"simmat",bike:"cyklat",run:"sprungit"}, voln={swim:"sim",bike:"cykel",run:"löp"}, pass={swim:"simpass",bike:"cykelpass",run:"löppass"};
@@ -891,6 +901,15 @@ function computeFlags(weeks, plan, inten, ms){
       why:(lastSwim? "Det är "+gap+" dagar sedan ditt senaste simpass." : "Det finns inget simpass i datan."),
       matter:"Vattenkänslan tappas snabbast av allt vid uppehåll, och det märks direkt i öppet vatten.",
       act:"Boka in ett simpass den här veckan."}); }
+  const lastStrength=data.activities.filter(a=>sportOf(a)==="strength").map(actDate).sort((a,b)=>b-a)[0];
+  if(data.activities.length){
+    const sgap=lastStrength? Math.floor((t-lastStrength)/DAY) : 99;
+    const race=plan&&plan.race, rdays=(race&&!race.placeholder&&race.date)? Math.ceil((race.date-t)/DAY) : null;
+    const taper = rdays!=null && rdays>=0 && rdays<=10; // taper-vakt: styrka droppas medvetet ~10 dgr före race
+    if(sgap>9 && !taper) flags.push({key:"strength-gap", lv:"warn", dim:"plan", t:"Det var ett tag sedan du styrketränade",
+      why:(lastStrength? "Det är "+sgap+" dagar sedan ditt senaste styrkepass." : "Det finns inget styrkepass i datan."),
+      matter:"Styrka är den starkast belagda skyddsfaktorn mot belastningsskador — effekten klingar av när passen glesnar.",
+      act:"Boka in ett styrkepass den här veckan — underhållsdos räcker."}); }
   for(const m of ms){ if(m.status!=="done"&&m.plan&&m.plan<=addDays(t,7)&&!m.done){
     flags.push({key:"milestone-risk", lv:"warn", dim:"plan", t:"Ett delmål håller på att rinna iväg",
       why:"”"+m.desc+"” skulle vara klart "+dfmt(m.plan)+".",
@@ -903,7 +922,8 @@ function computeFlags(weeks, plan, inten, ms){
         why:"Bara "+Math.round(inten.loPct)+" % lågintensivt de senaste 14 dagarna — fasen ("+ph.name+") vill ha ~"+ph.target+" %.",
         matter:"Du bygger ingen aerob form i gråzonen, bara trötthet.",
         act:"Lägg nästa par pass i Z2."});
-    else
+    else if(!(recov&&(recov.flags.sleep||recov.flags.hrv||recov.flags.rhr)))
+      /* v21: föreslå aldrig kvalitet när sömn/HRV/vilopuls varnar — intensitet styrs av dagsform */
       flags.push({key:"intensity-low", lv:"warn", dim:"intensity", t:"Det har varit lugnt ett tag",
         why:Math.round(inten.loPct)+" % lågintensivt mot fasens ~"+ph.target+" %.",
         matter:"Inget fel i sig — men om kroppen är pigg har du utrymme för mer kvalitet.",
@@ -924,6 +944,16 @@ function computeFlags(weeks, plan, inten, ms){
         why:"Den ligger "+n1(m7-mb)+" slag över din 30-dagarsnormal ("+Math.round(m7)+" mot "+Math.round(mb)+").",
         matter:"Förhöjd vilopuls betyder ofta att något tär — sömn, stress eller en infektion på väg.",
         act:"Sänk intensiteten tills den vänder ner igen."}); } }
+  if(recov){
+    if(recov.flags.sleep) flags.push({key:"sleep", lv:"warn", dim:"recovery", t:"Sömnen har varit knapp",
+      why:"Snittet de senaste 3 nätterna är "+n1(recov.sleepAvg)+" h — under ~6,5 h hinner återhämtningen sällan ikapp.",
+      matter:"Intensitet styrs av sömn — hård träning på sömnbrist ger sämre anpassning och högre skade- och infektionsrisk.",
+      act:"Lägg dagens pass i Z1–Z2, eller flytta kvalitetspasset tills du sovit ikapp."});
+    if(recov.flags.hrv) flags.push({key:"hrv", lv:"warn", dim:"recovery", t:"HRV ligger under din baslinje",
+      why:"Senaste mätningen "+recov.recentHrv+" ms mot din 30-dagarsbas "+recov.baseHrv+" ms.",
+      matter:"Sänkt HRV pekar på kvarvarande belastning på nervsystemet — kroppen är inte färdig med gårdagen.",
+      act:"Grön volym går bra — spara kvaliteten tills HRV är tillbaka runt baslinjen."});
+  }
   return flags; }
 
 /* ============ SVG-hjälpare ============ */
@@ -1561,8 +1591,9 @@ function renderRace(plan){
     const total=isTotal(l.gren);
     const dot = total? "" : '<span class="dot" style="background:'+(isTrans(l.gren)?"#7E8AA0":colorOf(l.gren))+'"></span>';
     body+='<div class="raceleg'+(total?" total":"")+'">'+dot+
-      '<span class="lg"><b>'+esc(l.gren)+'</b>'+(l.strategi?'<span class="strat">'+esc(l.strategi)+'</span>':'')+'</span>'+
-      '<span class="num">'+(l.mal?'<div class="mal" style="color:var(--mut)">'+esc(l.mal)+'</div>':'')+(l.split?'<div class="split">'+esc(l.split)+'</div>':'')+'</span></div>'; }
+      '<span class="lg"><b>'+esc(l.gren)+'</b></span>'+
+      '<span class="num">'+(l.mal?'<div class="mal" style="color:var(--mut)">'+esc(l.mal)+'</div>':'')+(l.split?'<div class="split">'+esc(l.split)+'</div>':'')+'</span>'+
+      (l.strategi?'<span class="strat">'+esc(l.strategi)+'</span>':'')+'</div>'; }
   card.innerHTML=body;
 }
 
@@ -1722,7 +1753,19 @@ function renderFocus(focus, plan){
   const c=$("#focus"); if(!c) return;
   const t=today();
   let lvl="ok", color="var(--accent)", label="", sub="", why="", nav=null;
-  if(focus.kind==="ms"){
+  if(focus.kind==="pause"){
+    const p=focus.pause;
+    lvl="ok"; color="var(--ok)";
+    if(p.kind==="manual"){
+      label="Paus — fokus på att bli frisk";
+      sub="Coach-puffarna är dämpade tills du släpper pausen."+(p.since? " Pausad sedan "+dfmt(pd(p.since))+"." : "");
+      why="Vilopuls- och belastningsvakterna är fortfarande på. När du är tillbaka: börja lugnt — volymtaket hjälper dig hålla emot.";
+    } else {
+      label="Återhämtning efter "+p.race.name;
+      sub="Lugna dagar — kroppen bygger nu. Full coachning igen "+dfmt(p.until)+".";
+      why="Rörelse är fritt fram, struktur är det inte. Delmål och pass-puffar väntar tills återhämtningen är klar.";
+    }
+  } else if(focus.kind==="ms"){
     const m=focus.m, nd=Math.ceil((m.plan-t)/DAY);
     const when = nd<0? "försenat" : nd===0? "idag" : nd<=7? "om "+nd+(nd===1?" dag":" dgr") : dfmt(m.plan);
     lvl = nd<0? "risk" : "accent";
@@ -1937,19 +1980,64 @@ function renderForm(){
     fib.setAttribute("aria-expanded", open?"true":"false"); };
 }
 
+/* ============ Pausläge (v21) — manuell paus (sjukdom/VAB) + automatisk efter race ============ */
+const PAUSE_KEY="trizone.pause.v1"; // beslutad nyckel (plan v21 §5)
+function loadPause(){ try{ return JSON.parse(localStorage.getItem(PAUSE_KEY))||{}; }catch(e){ return {}; } }
+function savePause(p){ try{ localStorage.setItem(PAUSE_KEY, JSON.stringify(p||{})); }catch(e){} }
+function postraceDays(cat){ const k=raceCategoryKey(cat); return (k==="70.3"||k==="ironman")? 10 : 7; }
+function pauseInfo(plan, stored, t){
+  if(stored&&stored.on) return {kind:"manual", since:stored.since||null};
+  const past=(plan&&plan.races||[]).filter(r=>!r.placeholder&&r.date&&r.date<t);
+  const last=past[past.length-1];
+  if(last){
+    const until=addDays(last.date, postraceDays(last.cat));
+    if(t<=until && !(stored&&stored.dismissed===iso(last.date)))
+      return {kind:"postrace", race:last, until};
+  }
+  return null;
+}
+const PUSH_KEYS=["swim-gap","strength-gap","milestone-risk","intensity-low"];
+function dampenFlags(flags, pinfo, stored, t){
+  let out=flags;
+  if(pinfo) out=out.filter(f=>!PUSH_KEYS.includes(f.key));
+  const ended=stored&&stored.ended? pd(stored.ended) : null;
+  if(!pinfo && ended && (t-ended)/DAY<=14)
+    out=out.map(f=> f.key&&f.key.indexOf("cap-")===0
+      ? Object.assign({}, f, {matter:f.matter+" Extra känsligt just nu — du kommer tillbaka efter ett uppehåll."})
+      : f);
+  return out;
+}
+function renderPauseRow(pinfo){
+  const c=$("#pauserow"); if(!c) return;
+  const bind=(fn)=>{ const b=$("#btn-pause"); if(b) b.addEventListener("click",fn); };
+  if(!pinfo){
+    c.innerHTML='<button type="button" class="pausebtn" id="btn-pause">Pausa coachningen — sjukdom eller livet emellan</button>';
+    bind(()=>{ const p=loadPause(); p.on=true; p.since=iso(today()); delete p.ended; savePause(p); toast("Paus aktiverad"); renderAll(Date.now()); });
+  } else if(pinfo.kind==="manual"){
+    c.innerHTML='<button type="button" class="pausebtn active" id="btn-pause">Avsluta paus — tillbaka i träning</button>';
+    bind(()=>{ const p=loadPause(); p.on=false; p.ended=iso(today()); savePause(p); toast("Paus avslutad — välkommen tillbaka"); renderAll(Date.now()); });
+  } else {
+    c.innerHTML='<button type="button" class="pausebtn active" id="btn-pause">Avsluta återhämtningsläget i förtid</button>';
+    bind(()=>{ const p=loadPause(); p.dismissed=iso(pinfo.race.date); p.ended=iso(today()); savePause(p); toast("Återhämtningsläget avslutat"); renderAll(Date.now()); });
+  }
+}
+
 function renderAll(ts){
   const plan=getPlan(), ms=getMilestones(), weeks=weeklyAgg(12), inten=intensity14();
   renderHeader(plan);
   $("#tl-band").parentElement.querySelectorAll(".tl-today").forEach(e=>e.remove());
   renderTimeline(plan);
-  const flags=computeFlags(weeks, plan, inten, ms);
+  const rawFlags=computeFlags(weeks, plan, inten, ms);
+  const pstore=loadPause(), pinfo=pauseInfo(plan, pstore, today());
+  const flags=dampenFlags(rawFlags, pinfo, pstore, today());
   const allFlags=flags.concat(computeGoodFlags(weeks, plan, inten, flags));
-  const focus=pickFocus(plan, flags, ms);
+  const focus= pinfo? {kind:"pause", pause:pinfo, tookNextKey:true} : pickFocus(plan, flags, ms);
   renderStatus(allFlags);
   renderFocus(focus, plan);
   renderNextKey(focus);
   renderFlags(allFlags, focus.excludeKey);
   renderFlagLog(processFlagLog(flags));
+  renderPauseRow(pinfo);
   renderRace(plan);
   renderReadiness(plan, ms);
   renderMilestones(ms);

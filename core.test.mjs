@@ -40,16 +40,18 @@ const pieces = [
   grabConst("DAY"), grabConst("CAP_G"), grabConst("DIMS"), grabConst("DIM_RANK"), grabConst("actDate"),
   grabFn("pd"), grabFn("iso"), grabFn("today"), grabFn("addDays"), grabFn("dfmt"), grabFn("n1"),
   grabFn("sportOf"), grabFn("zones"), grabFn("currentPhase"), grabFn("nextMilestone"),
+  grabFn("computeRecovery"), grabFn("raceCategoryKey"), grabFn("postraceDays"),
+  grabFn("pauseInfo"), grabFn("dampenFlags"), grabConst("PUSH_KEYS"),
   grabFn("computeFlags"), grabFn("computeGoodFlags"), grabFn("rollup"), grabFn("pickFocus"),
   /* fryst 'idag' för deterministiska tester */
   'today = function(){ return new Date(2026, 6, 2); };',
-  'globalThis.core = { computeFlags, computeGoodFlags, rollup, pickFocus, nextMilestone };'
+  'globalThis.core = { computeFlags, computeGoodFlags, rollup, pickFocus, nextMilestone, pauseInfo, dampenFlags };'
 ].join("\n");
 
 const ctx = { console };
 vm.createContext(ctx);
 new vm.Script(pieces, { filename: "extraherad-kärna.js" }).runInContext(ctx);
-const { computeFlags, computeGoodFlags, rollup, pickFocus } = ctx.core;
+const { computeFlags, computeGoodFlags, rollup, pickFocus, pauseInfo, dampenFlags } = ctx.core;
 
 /* ---------- fixtures ---------- */
 const T = new Date(2026, 6, 2);                       // matchar fryst today()
@@ -208,6 +210,109 @@ t("tom pågående vecka bryter inte streaken (hoppas över)", () => {
   ctx.data = baseData();
   const wks = [week(), week(), week(), week(), week({ vol: { swim: 0, bike: 0, run: 0, strength: 0, other: 0 } })];
   assert.ok(key(computeGoodFlags(wks, noPlan, null, []), "streak"));
+});
+
+/* ---------- v21: styrke-gap + taper-vakt ---------- */
+console.log("styrke-gap (v21)");
+const strengthAct = (daysAgo) => ({ type: "WeightTraining", start_date_local: isoD(d(-daysAgo)), moving_time: 2400 });
+const planRaceIn = (days, cat) => ({ phases: [phase], races: [], race: { name: "Race", date: d(days), cat } });
+
+t("12 dagar sedan styrka → strength-gap warn (dim plan)", () => {
+  ctx.data = { activities: [swimAct(2), strengthAct(12)], wellness: [] };
+  const f = key(computeFlags([week()], noPlan, null, []), "strength-gap");
+  assert.ok(f); assert.equal(f.lv, "warn"); assert.equal(f.dim, "plan");
+});
+t("5 dagar sedan styrka → ingen flagga", () => {
+  ctx.data = { activities: [swimAct(2), strengthAct(5)], wellness: [] };
+  assert.ok(!key(computeFlags([week()], noPlan, null, []), "strength-gap"));
+});
+t("inget styrkepass alls i datan → flagga", () => {
+  ctx.data = baseData();
+  assert.ok(key(computeFlags([week()], noPlan, null, []), "strength-gap"));
+});
+t("taper-vakt: race om 7 dgr → tyst trots 12 dagars gap", () => {
+  ctx.data = { activities: [swimAct(2), strengthAct(12)], wellness: [] };
+  assert.ok(!key(computeFlags([week()], planRaceIn(7, "Olympisk distans"), null, []), "strength-gap"));
+});
+t("race om 15 dgr → vakten släpper, flaggan fyrar", () => {
+  ctx.data = { activities: [swimAct(2), strengthAct(12)], wellness: [] };
+  assert.ok(key(computeFlags([week()], planRaceIn(15, "Olympisk distans"), null, []), "strength-gap"));
+});
+
+/* ---------- v21: sömn/HRV → flagglagret ---------- */
+console.log("sömn/HRV (v21)");
+const wSleep = (daysAgo, hours) => ({ id: isoD(d(-daysAgo)), sleepSecs: hours * 3600 });
+const wHrv   = (daysAgo, v) => ({ id: isoD(d(-daysAgo)), hrv: v });
+
+t("3 nätter à 5,5 h → sleep warn (dim recovery)", () => {
+  ctx.data = { activities: [swimAct(1), strengthAct(2)], wellness: [wSleep(3, 5.5), wSleep(2, 5.5), wSleep(1, 5.5)] };
+  const f = key(computeFlags([week()], noPlan, null, []), "sleep");
+  assert.ok(f); assert.equal(f.dim, "recovery");
+});
+t("3 nätter à 7,5 h → ingen sömnflagga", () => {
+  ctx.data = { activities: [swimAct(1), strengthAct(2)], wellness: [wSleep(3, 7.5), wSleep(2, 7.5), wSleep(1, 7.5)] };
+  assert.ok(!key(computeFlags([week()], noPlan, null, []), "sleep"));
+});
+t("HRV 40 mot baslinje ~50 → hrv warn; HRV vid baslinje → ingen", () => {
+  const base = []; for (let i = 2; i <= 9; i++) base.push(wHrv(i, 50));
+  ctx.data = { activities: [swimAct(1), strengthAct(2)], wellness: [...base, wHrv(1, 40)] };
+  assert.ok(key(computeFlags([week()], noPlan, null, []), "hrv"));
+  ctx.data = { activities: [swimAct(1), strengthAct(2)], wellness: [...base, wHrv(1, 50)] };
+  assert.ok(!key(computeFlags([week()], noPlan, null, []), "hrv"));
+});
+t("intensity-low undertrycks när sömnen varnar (appen motsäger inte sig själv)", () => {
+  ctx.data = { activities: [swimAct(1), strengthAct(2)], wellness: [wSleep(3, 5.5), wSleep(2, 5.5), wSleep(1, 5.5)] };
+  assert.ok(!key(computeFlags([week()], planFx, { loPct: 90 }, []), "intensity-low"));
+  ctx.data = { activities: [swimAct(1), strengthAct(2)], wellness: [wSleep(3, 7.5), wSleep(2, 7.5), wSleep(1, 7.5)] };
+  assert.ok(key(computeFlags([week()], planFx, { loPct: 90 }, []), "intensity-low"));
+});
+
+/* ---------- v21: pausläge ---------- */
+console.log("pausläge (v21)");
+const planPast = (daysAgo, cat) => ({ phases: [phase], race: null,
+  races: [{ name: "Holmsjö Triathlon", date: d(-daysAgo), cat }] });
+
+t("manuell paus lagrad → kind manual", () => {
+  const p = pauseInfo(planFx, { on: true, since: isoD(T) }, T);
+  assert.ok(p); assert.equal(p.kind, "manual");
+});
+t("race för 2 dgr sedan (olympisk) → postrace till race+7", () => {
+  const p = pauseInfo(planPast(2, "Olympisk distans"), {}, T);
+  assert.ok(p); assert.equal(p.kind, "postrace");
+  assert.equal(isoD(p.until), isoD(d(5)));
+});
+t("race för 8 dgr sedan (olympisk) → fönstret stängt, ingen paus", () => {
+  assert.equal(pauseInfo(planPast(8, "Olympisk distans"), {}, T), null);
+});
+t("race för 8 dgr sedan (70.3) → 10-dagarsfönster, fortfarande postrace", () => {
+  const p = pauseInfo(planPast(8, "70.3"), {}, T);
+  assert.ok(p); assert.equal(p.kind, "postrace");
+});
+t("avfärdad postrace (dismissed) → ingen paus", () => {
+  assert.equal(pauseInfo(planPast(2, "Olympisk distans"), { dismissed: isoD(d(-2)) }, T), null);
+});
+t("dampenFlags: pufflaggor bort, vakter kvar", () => {
+  const fx = [
+    { key: "swim-gap", lv: "risk", dim: "plan" }, { key: "strength-gap", lv: "warn", dim: "plan" },
+    { key: "milestone-risk", lv: "warn", dim: "plan" }, { key: "intensity-low", lv: "warn", dim: "intensity" },
+    { key: "rhr", lv: "warn", dim: "recovery" }, { key: "cap-run", lv: "risk", dim: "load", matter: "Snabba volymhopp." }
+  ];
+  const out = dampenFlags(fx, { kind: "manual" }, {}, T);
+  assert.deepEqual(out.map(f => f.key).sort(), ["cap-run", "rhr"]);
+});
+t("dampenFlags: passthrough utan paus", () => {
+  const fx = [{ key: "swim-gap", lv: "risk", dim: "plan" }];
+  assert.deepEqual(dampenFlags(fx, null, {}, T), fx);
+});
+t("comeback: paus avslutad för 5 dgr sedan → cap-flaggans copy nämner uppehållet", () => {
+  const fx = [{ key: "cap-run", lv: "risk", dim: "load", matter: "Snabba volymhopp." }];
+  const out = dampenFlags(fx, null, { ended: isoD(d(-5)) }, T);
+  assert.ok(out[0].matter.includes("uppehåll"));
+});
+t("comeback-copyn klingar av efter 14 dagar", () => {
+  const fx = [{ key: "cap-run", lv: "risk", dim: "load", matter: "Snabba volymhopp." }];
+  const out = dampenFlags(fx, null, { ended: isoD(d(-20)) }, T);
+  assert.ok(!out[0].matter.includes("uppehåll"));
 });
 
 /* ---------- deploy-vakt: versionsparitet index ↔ sw ---------- */
