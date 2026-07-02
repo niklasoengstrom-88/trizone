@@ -642,7 +642,7 @@ button:focus-visible, .tl-seg:focus-visible, .ms:focus-visible{outline:2px solid
        <input id="in-race" type="url" placeholder="https://docs.google.com/…&output=csv">
        <label for="in-edit">Google Sheet — redigeringslänk (valfri, för genväg)</label>
        <input id="in-edit" type="url" placeholder="https://docs.google.com/spreadsheets/d/…/edit">
-       <label for="in-proxy">Proxy-prefix (lämna tomt — används bara om direktanrop blockeras)</label>
+       <label for="in-proxy">Proxy-prefix (lämna tomt — används bara för Sheet-länkarna om direktanrop blockeras; intervals-anrop går aldrig via proxy)</label>
        <input id="in-proxy" type="url" placeholder="https://din-worker.workers.dev/?url="></div></details>
        <details class="pg"><summary>Pulsfönster</summary><div class="pg-body">
        <p class="zhint">Det aeroba pulsintervall (ungefär din Z2) som watt-vid-puls och tempo-vid-puls jämför inom — håller pulsen konstant så trenden blir läsbar. Dina egentliga zoner Z1–Z5 sätter du i intervals.icu; appen läser dem därifrån.</p>
@@ -706,7 +706,7 @@ const DAY=86400000;
 const FALLBACK_RACE={name:"Din tävling", date:"2099-01-01", placeholder:true};
 const COLORS={swim:"#56B4D3", bike:"#E3B341", run:"#E2654F", strength:"#9A8FD0", other:"#5C687C"};
 const SPORT_LABEL={swim:"Simning", bike:"Cykel", run:"Löpning", strength:"Styrka", other:"Övrigt", brick:"Brick"};
-const BUILD="v19 · 2026-06-25";
+const BUILD="v20 · 2026-07-02";
 let cfg=null, data={activities:[], wellness:[], plan:[], milestones:[], race:[]};
 
 /* ============ Hjälpare ============ */
@@ -767,9 +767,12 @@ function zones(a){ const z=a.icu_hr_zone_times; return Array.isArray(z)? z : nul
 
 /* ============ Hämtning ============ */
 async function fetchMaybeProxy(url, opts){
+  /* Säkerhet: anrop med Authorization-header (intervals.icu) går ALDRIG via proxy —
+     annars skickas API-nyckeln till proxyägaren. Proxy är enbart för publika CSV-länkar. */
+  const hasAuth = !!(opts && opts.headers && opts.headers.Authorization);
   try{ const r=await fetch(url, opts); if(!r.ok) throw new Error("HTTP "+r.status+" "+url.split("/").slice(2,3)); return r; }
   catch(e){
-    if(cfg.proxy && !url.startsWith(cfg.proxy)){
+    if(!hasAuth && cfg.proxy && !url.startsWith(cfg.proxy)){
       const r=await fetch(cfg.proxy + encodeURIComponent(url), opts);
       if(!r.ok) throw new Error("HTTP "+r.status+" (via proxy)");
       return r; }
@@ -800,7 +803,7 @@ async function refreshAll(){
   if(fails.length){
     const corsHint=fails.some(f=>/Failed to fetch|NetworkError|TypeError/i.test(f));
     msgs.push("Kunde inte hämta: "+fails.join(" · ")+
-      (corsHint? " — Troligen CORS-blockering. Lägg in ett proxy-prefix under Inställningar." : "")); }
+      (corsHint? " — Troligen CORS-blockering. För Sheet-länkarna kan ett proxy-prefix under Inställningar hjälpa (intervals-anrop går aldrig via proxy)." : "")); }
   const badTabs=[];
   if(cfg.planUrl && !(Array.isArray(data.plan)&&data.plan.length&&"typ" in data.plan[0])) badTabs.push("Plan");
   if(cfg.msUrl && !(Array.isArray(data.milestones)&&data.milestones.length&&"gren" in data.milestones[0])) badTabs.push("Delmal");

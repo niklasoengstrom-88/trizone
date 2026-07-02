@@ -1,5 +1,5 @@
 /* TRIZONE service worker — network-first för sidan, cache som offline-fallback. */
-const CACHE = "trizone-v19";
+const CACHE = "trizone-v20";
 const ASSETS = [
   "./index.html",
   "./manifest.json",
